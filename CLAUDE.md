@@ -103,24 +103,28 @@ tables, font, map layouts, guides (`Guide*.kt` + `GuideAreas*Gen.kt`, by a Kotli
 `tools/gen_guide.py`) are generated from the app's (`make -C 3ds tables`). Look at UI changes with `make -C
 3ds preview` (PNGs from the RAM fixtures); `make -C 3ds azahar-test` boots the real `.3dsx` in the
 Azahar emulator on a fixture test ROM (GBA homebrew that loads a fixture's RAM, `3ds/test/`). MAP,
-POKéDEX and GUIDE read the ROM: `make -C 3ds decomps` builds pret's FireRed rev 1 / Emerald (retail
-SHA1s, checked) into `3ds/build/decomps/`, the preview passes them in, and `fixture-roms` writes the
+POKéDEX and GUIDE read the ROM: `make -C 3ds decomps` builds pret's FireRed rev 1 / Emerald / Ruby / Sapphire
+rev 0-2 (retail SHA1s, checked) into `3ds/build/decomps/`, the preview passes them in, and `fixture-roms` writes the
 fixture ROM over the decomp's start (`fixture-*-rom.gba`: the tables sit past 0x08200000) - build/ only,
-never committed. Only retail English FireRed / LeafGreen / Emerald so far (ROM table addresses for FireRed
-rev 1, LeafGreen rev 0 / 1 and Emerald: FireRed rev 0 gets MAP but no POKéDEX, and GUIDE without wild / BOSS,
-as in the app); item descriptions are read from the ROM's gItems (`pd_item_description`), never bundled. Games
+never committed. Only retail English FireRed / LeafGreen / Emerald / Ruby / Sapphire so far (ROM table addresses for
+FireRed rev 1, LeafGreen rev 0 / 1, Emerald, Ruby / Sapphire rev 0 / 1 / 2: FireRed rev 0 gets MAP but no POKéDEX, and GUIDE
+without wild / BOSS, as in the app). Ruby / Sapphire run as `PD_GAME_EMERALD` (`pd_game_is_rs` where they differ) with the
+app's NATIVE_RUBY switches on `pd_config`: `staticSaveBlocks`, `noEncryptionKey`, `inBattleOff` 0x43D, `battleStructStatic`,
+`dexPage2Off`, `itemCount` 349; their GUIDE is `GuideRubySapphire.kt` built per version (`$team`-style templates); no card,
+no item icons, no POKéMON switch (POKéMON presses the game's own; no gPartyMenu there); item descriptions are read from the ROM's gItems (`pd_item_description`), never bundled. Games
 boot on a New 3DS (2026-10-22: Emerald / LeafGreen load) - ROMs must go through `mCorePreloadVF` into mGBA's fixed
 ROM buffer (`core->loadROM` on the SD file put a 16 MB copy in the linear heap, never freed: a crash on hardware, fine in
 Azahar). Its tabs: PARTY, BAG, MAP, GUIDE, POKéDEX (BATTLE takes the last chip in a battle: INFO /
 SUGGESTIONS + the FOE TEAM, ported from BattleInfoScreen / SuggestionsScreen / CompanionScreen's foe state), and
 SETTINGS (screen mode, FF, one save state slot - states never carry the save data), with the TRAINER CARD
 under it (`pd_card`: its renders match `TrainerCardTest`'s pinned CRCs - `make preview` prints them; keep it
-so). Game actions (retail English FireRed rev 1, LeafGreen rev 0 / 1, Emerald): BAG's USE / GIVE / PC, the summary's TAKE,
+so). Game actions (retail English FireRed rev 1, LeafGreen rev 0 / 1, Emerald, Ruby / Sapphire rev 0 / 1 / 2): BAG's USE / GIVE / PC, the summary's TAKE,
 MAP's FLY (`core/pd_action.c`, FieldItems.kt / Pc.kt / Fly.kt's tables - keep in sync) and BATTLE's CONTROLS (`core/pd_bctl.c`,
 BattleInputController's Gen 3 picks: cursor written + one A, the switch steered by gPartyMenu.slotId) call / press the game
 between frames through `mgba/pd_mgba.c` (the app's pk_call). `make act-test` runs every one for real on the decomp ROMs in a
 host libmgba with a fixture's RAM loaded over the running game (firered_vanilla was dumped mid quest-log recap: the test
-checks NOT NOW, then clears it); keep it passing. ROM art (`pd_romart`) is one scan per ROM for every blob (map + card), done while the game loads. No retail trainer-battle
+checks NOT NOW, then clears it; ruby_rev1 stands indoors, so FLY checks CAN'T FLY HERE, then flies with the map type poked;
+R/S rev 0 only get `tables` runs - the fixtures' RAM holds rev 1's code pointers); keep it passing. ROM art (`pd_romart`) is one scan per ROM for every blob (map + card), done while the game loads. No retail trainer-battle
 fixture exists, so `make preview` builds one from `emerald_de_battle` (party structs copied into gEnemyParty)
 and keeps it in `3ds/build/fixtures/emerald_trainer` for `make azahar-battle-test`. mGBA's 3DS build
 loads every ROM into one fixed buffer, so per-ROM caches key on `pd_rom_id()`, never the ROM pointer. The GPU path

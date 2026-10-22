@@ -157,6 +157,14 @@ act-test: $(BUILD)/pd_act_test
 	$(BUILD)/pd_act_test $(DECOMP_DIR)/pokefirered/pokeleafgreen.gba $(FIXTURES)/leafgreen_rev0 battle
 	$(BUILD)/pd_act_test $(DECOMP_DIR)/pokefirered/pokeleafgreen_rev1.gba $(FIXTURES)/leafgreen_rev1 battle
 	$(BUILD)/pd_act_test $(DECOMP_DIR)/pokeemerald/pokeemerald.gba $(FIXTURES)/emerald_vanilla battle
+	$(BUILD)/pd_act_test $(DECOMP_DIR)/pokeruby/pokeruby_rev1.gba $(FIXTURES)/ruby_rev1
+	$(BUILD)/pd_act_test $(DECOMP_DIR)/pokeruby/pokeruby_rev2.gba $(FIXTURES)/ruby_rev2
+	$(BUILD)/pd_act_test $(DECOMP_DIR)/pokeruby/pokesapphire_rev1.gba $(FIXTURES)/sapphire_rev1
+	$(BUILD)/pd_act_test $(DECOMP_DIR)/pokeruby/pokesapphire_rev2.gba $(FIXTURES)/sapphire_rev2
+	$(BUILD)/pd_act_test $(DECOMP_DIR)/pokeruby/pokeruby_rev1.gba $(FIXTURES)/ruby_rev1 battle
+	$(BUILD)/pd_act_test $(DECOMP_DIR)/pokeruby/pokesapphire_rev1.gba $(FIXTURES)/sapphire_rev1 battle
+	$(BUILD)/pd_act_test $(DECOMP_DIR)/pokeruby/pokeruby.gba $(FIXTURES)/ruby_rev1 tables
+	$(BUILD)/pd_act_test $(DECOMP_DIR)/pokeruby/pokesapphire.gba $(FIXTURES)/sapphire_rev1 tables
 
 clean:
 	rm -rf $(BUILD) ctr/build ctr/pokedaisy.3dsx

@@ -4,7 +4,7 @@
 // then each action through pd_mgba.c's calls, checked in RAM by the snapshot
 // reader and the game's own functions.
 //
-//   pd_act_test <rom.gba> <fixture dir>
+//   pd_act_test <rom.gba> <fixture dir> [battle | tables]
 //
 // `make act-test` (needs `make decomps` and a host libmgba: see the Makefile).
 #include <stdarg.h>
@@ -100,6 +100,38 @@ static uint32_t call(uint32_t fn, uint32_t a0, uint32_t a1, uint32_t a2) {
     return r0;
 }
 
+// The game's functions the test itself calls (each build's map): the field-lock
+// check, ScriptContext_SetupScript, SetMonData, AddBagItem.
+struct test_fns {
+    uint32_t lockFn, setupScript, setMonData, addBagItem;
+};
+
+static struct test_fns test_fns(void) {
+    bool rev0 = game.revision == 0;
+    if (game.kind == PD_GAME_EMERALD && !pd_game_is_rs(&game)) return (struct test_fns) { 0x08098E6C, 0x08098EF8, 0x0806ACAC, 0x080D6928 };
+    if (!strcmp(game.code, "AXVE")) {
+        return rev0 ? (struct test_fns) { 0x08065548, 0x080655B8, 0x0803D1FC, 0x080A9424 }
+                    : (struct test_fns) { 0x08065568, 0x080655D8, 0x0803D1FC, 0x080A9444 };
+    }
+    if (!strcmp(game.code, "AXPE")) {
+        return rev0 ? (struct test_fns) { 0x0806554C, 0x080655BC, 0x0803D1FC, 0x080A9424 }
+                    : (struct test_fns) { 0x0806556C, 0x080655DC, 0x0803D1FC, 0x080A9444 };
+    }
+    if (!strcmp(game.code, "BPGE") && rev0) return (struct test_fns) { 0x08069958, 0x08069AE4, 0x0804037C, 0x0809A058 };
+    if (!strcmp(game.code, "BPGE")) return (struct test_fns) { 0x0806996C, 0x08069AF8, 0x08040390, 0x0809A06C };
+    return (struct test_fns) { 0x0806996C, 0x08069AF8, 0x08040390, 0x0809A098 };
+}
+
+// FireRed's quest-log recap (firered_vanilla was captured mid-way): its state
+// cleared (sLockFieldControls, gQuestLogState) so the field is the player's.
+static void clear_quest_log(void) {
+    if (game.kind != PD_GAME_FIRERED) return;
+    uint8_t zero = 0;
+    io.write(core, 0x03000F9C, &zero, 1);
+    io.write(core, 0x0203ADFA, &zero, 1);
+    frames(2);
+}
+
 // --- BATTLE: the companion's controls on the game's own battle menu ---------
 
 static struct pd_bctl bc;
@@ -129,18 +161,22 @@ static enum pd_bin wait_menu(int limit, bool mash) {
     return pd_battle_input(&game, io.read, core, &battler);
 }
 
-static void battle_test(uint32_t setupScript) {
-    check(pd_battle_input_known(&game), "battle input: the handlers are known");
-    // setwildbattle CHANSEY 60 (no item); dowildbattle; end - through the
-    // game's script engine, from the field.
+// setwildbattle CHANSEY 60 (no item); dowildbattle; end - through the game's
+// script engine, from the field; true once the action menu waits.
+static bool start_battle(uint32_t setupScript) {
     const uint8_t script[] = { 0xB6, 113, 0, 60, 0, 0, 0xB7, 0x02 };
     io.write(core, 0x0203FFF4, script, sizeof(script));
     call(setupScript, 0x0203FFF4, 0, 0);
     int b0;
     for (int i = 0; i < 1200 && pd_battle_input(&game, io.read, core, &b0) == PD_BIN_NONE; i++) battle_frames(1);
     check(pd_battle_input(&game, io.read, core, &b0) != PD_BIN_NONE, "the battle started");
-    enum pd_bin st = wait_menu(4000, true);
-    check(st == PD_BIN_ACTION, "a wild battle: the action menu waits");
+    return wait_menu(4000, true) == PD_BIN_ACTION;
+}
+
+static void battle_test(uint32_t setupScript) {
+    check(pd_battle_input_known(&game), "battle input: the handlers are known");
+    check(start_battle(setupScript), "a wild battle: the action menu waits");
+    enum pd_bin st;
     struct pd_snapshot s;
     snap(&s);
     int pp0 = s.battlers[PD_POS_PLAYER_LEFT].pp[0], lead = s.battlers[PD_POS_PLAYER_LEFT].species;
@@ -171,8 +207,27 @@ static void battle_test(uint32_t setupScript) {
     }
     check(taken, "FIGHT + the move: its PP spent");
     st = wait_menu(3000, true);
+    if (st == PD_BIN_NONE) {
+        // The move won the battle (ruby_rev1's RAYQUAZA Lv100): another one.
+        printf("     the foe fainted: a new battle\n");
+        for (int i = 0; i < 300; i++) battle_frames(1);
+        st = start_battle(setupScript) ? PD_BIN_ACTION : PD_BIN_NONE;
+    }
     check(st == PD_BIN_ACTION, "the next turn's menu");
 
+    if (!game.cfg->partyMenu) {
+        // No switch of ours (Ruby / Sapphire): POKéMON opens the game's party screen, B closes it.
+        pd_bctl_action(&bc, 2);
+        for (int i = 0; i < 300 && pd_battle_input(&game, io.read, core, &battler) != PD_BIN_PARTY; i++) battle_frames(1);
+        check(pd_battle_input(&game, io.read, core, &battler) == PD_BIN_PARTY, "POKéMON opens the game's party screen");
+        battle_frames(60);
+        pd_bctl_back(&bc);
+        for (int i = 0; i < 300 && pd_battle_input(&game, io.read, core, &battler) != PD_BIN_ACTION; i++) {
+            if (i % 60 == 59) pd_bctl_back(&bc);
+            battle_frames(1);
+        }
+        check(pd_battle_input(&game, io.read, core, &battler) == PD_BIN_ACTION, "B: back to the action menu");
+    } else {
     // POKéMON: party slot 2 sent in.
     snap(&s);
     int want = -1;
@@ -191,6 +246,7 @@ static void battle_test(uint32_t setupScript) {
     check(sent, "POKéMON: the picked one is out");
     st = wait_menu(3000, true);
     check(st == PD_BIN_ACTION, "the next turn's menu");
+    }
 
     // RUN until it works (a wild battle can refuse): the battle ends.
     bool ended = false;
@@ -238,43 +294,39 @@ int main(int argc, char** argv) {
     pd_mgba_reset();
     frames(60);
 
+    const struct test_fns fns = test_fns();
     if (argc > 3 && !strcmp(argv[3], "battle")) {
-        uint32_t lockFn = game.kind == PD_GAME_EMERALD ? 0x08098E6C
-            : !strcmp(game.code, "BPGE") && game.revision == 0 ? 0x08069958 : 0x0806996C;
-        if (call(lockFn, 0, 0, 0)) {
-            uint8_t zero = 0;
-            io.write(core, 0x03000F9C, &zero, 1);
-            io.write(core, 0x0203ADFA, &zero, 1);
-            frames(2);
-        }
-        battle_test(game.kind == PD_GAME_EMERALD ? 0x08098EF8
-                    : !strcmp(game.code, "BPGE") && game.revision == 0 ? 0x08069AE4 : 0x08069AF8);
+        if (call(fns.lockFn, 0, 0, 0)) clear_quest_log();
+        battle_test(fns.setupScript);
         printf("%d failure(s)\n", failures);
         return failures ? 1 : 0;
     }
     check(pd_act_supported(&game), "the ROM's code is where the tables say");
     check(pd_act_can_pc(&game), "PC code found");
     check(pd_act_can_fly(&game), "FLY code found");
+    check(pd_battle_input_known(&game), "battle input: the handlers are known");
+    if (argc > 3 && !strcmp(argv[3], "tables")) {
+        // A ROM with no fixture of its own (a fixture's RAM holds another build's
+        // code pointers): only that its tables match its code.
+        printf("%d failure(s)\n", failures);
+        return failures ? 1 : 0;
+    }
     const struct pd_config* cfg = game.cfg;
-    bool emerald = game.kind == PD_GAME_EMERALD;
-    uint32_t setMonData = emerald ? 0x0806ACAC : !strcmp(game.code, "BPGE") && game.revision == 0 ? 0x0804037C : 0x08040390;
+    uint32_t setMonData = fns.setMonData;
     uint32_t scratch = 0x0203FFF0;
 
     struct pd_act a;
     memset(&a, 0, sizeof(a));
     stepping = &a;
-    uint32_t lockFn = emerald ? 0x08098E6C : !strcmp(game.code, "BPGE") && game.revision == 0 ? 0x08069958 : 0x0806996C;
-    if (call(lockFn, 0, 0, 0)) {
+    uint32_t lockFn = fns.lockFn;
+    if (call(lockFn, 0, 0, 0) && game.kind == PD_GAME_FIRERED) {
         // firered_vanilla was captured with the quest log's recap still on
         // (controls locked): the actions must say NOT_NOW. Then the recap's
         // state cleared (sLockFieldControls, gQuestLogState) for the rest.
         a.item = 13;
         run(&a, PD_REQ_USE);
         check(a.result == PD_ACT_NOT_NOW, "controls locked: NOT NOW");
-        uint8_t zero = 0;
-        io.write(core, 0x03000F9C, &zero, 1);
-        io.write(core, 0x0203ADFA, &zero, 1);
-        frames(2);
+        clear_quest_log();
     }
     check(call(lockFn, 0, 0, 0) == 0, "the field is free");
     struct pd_snapshot s;
@@ -291,8 +343,7 @@ int main(int argc, char** argv) {
     int potions = count_of(&s, 13);
     if (!potions) {
         // None in the bag: one through the game's AddBagItem.
-        call(emerald ? 0x080D6928 : !strcmp(game.code, "BPGE") ? (game.revision ? 0x0809A06C : 0x0809A058) : 0x0809A098,
-             13, 1, 0);
+        call(fns.addBagItem, 13, 1, 0);
         snap(&s);
         potions = count_of(&s, 13);
     }
@@ -349,8 +400,7 @@ int main(int argc, char** argv) {
 
     // A Repel: through the game's VarGet / VarSet, one out of the bag.
     if (!count_of(&s, 86)) {
-        call(emerald ? 0x080D6928 : !strcmp(game.code, "BPGE") ? (game.revision ? 0x0809A06C : 0x0809A058) : 0x0809A098,
-             86, 2, 0);
+        call(fns.addBagItem, 86, 2, 0);
         snap(&s);
     }
     int repels = count_of(&s, 86);
@@ -369,6 +419,16 @@ int main(int argc, char** argv) {
         uint8_t fly[2] = { 19, 0 };
         io.write(core, scratch, fly, 2);
         call(setMonData, cfg->playerParty, 16, scratch);
+        run(&a, PD_REQ_FLY_TARGETS);
+        printf("     FLY: result %d, %d towns, flyer slot %d\n", a.result, a.flyCount, a.flyerSlot);
+    }
+    if (a.result == PD_ACT_CANT_FLY_HERE) {
+        // The fixture stands indoors (ruby_rev1: a Slateport house): the game's
+        // own map check says no. Then the map called a city's, to fly anyway.
+        snap(&s);
+        check(s.mapType == 8, "indoors: can't FLY from here");
+        uint8_t city = 2;
+        io.write(core, cfg->mapHeader + 0x17, &city, 1);
         run(&a, PD_REQ_FLY_TARGETS);
         printf("     FLY: result %d, %d towns, flyer slot %d\n", a.result, a.flyCount, a.flyerSlot);
     }

@@ -14,11 +14,13 @@ struct fly_heal {
     uint32_t toHealLocation, toMapWarp, returnToField, saveBlock2Ptr;
     int specialMapsec[2], specialHeal[2];
     int genderMapsec, maleHeal, femaleHeal;
+    bool saveBlock2Static; // saveBlock2Ptr is gSaveBlock2 itself (Ruby / Sapphire)
 };
 
 struct actions {
     const char* code;
-    int revision;
+    unsigned revisions; // REV(n) bits: the ROM header revisions with this code
+
     // The bag (FieldItemFns).
     uint32_t varGet, varSet, checkBagHasItem, removeBagItem, fieldControlsLocked;
     int repelVar;
@@ -45,12 +47,19 @@ struct actions {
     // The field's main callback (CB2_Overworld): anything else is a menu, a
     // battle or a script's screen.
     uint32_t overworldCb2;
+    // Ruby / Sapphire: SetUpFieldMove_Fly there also sets the party menu's
+    // callbacks, so FLY's map check is the one it makes -
+    // Overworld_MapTypeAllowsTeleportAndFly(gMapHeader.mapType), at this
+    // function address, gMapHeader here. 0 = call SetUpFieldMove_Fly.
+    uint32_t mapHeader;
 };
+
+#define REV(n) (1u << (n))
 
 #define PC_SCRIPT 0x0203FFF4u
 
 static const struct actions FIRERED_REV1 = {
-    "BPRE", 1,
+    "BPRE", REV(1),
     0x0806E57C, 0x0806E598, 0x08099F54, 0x0809A1EC, 0x0806996C, 0x4020, 0x083DB098,
     { 0xE6DE47BA, 0x6E7CC2BE, 0xD30D656E, 0xC40BF208, 0x9C26CCA4 },
     0x0803FBFC, 0x08040390, 0x08042428, 0x080413D4, 0x0809A098, 0x02024284, 0x02024029, 0x0203FFF0,
@@ -62,11 +71,11 @@ static const struct actions FIRERED_REV1 = {
     0x0203B0A9, 0x083F2F50, 0x58, 108,
     { 0x07BEBC3A, 0xCD8961DF, 0x348C5B9F, 0xF9959006, 0x0111A86E, 0xBAB654BA, 0x70EA1DFC },
     { 2, 2 }, -1, NULL,
-    0x080565C9,
+    0x080565C9, 0,
 };
 
 static const struct actions LEAFGREEN_REV0 = {
-    "BPGE", 0,
+    "BPGE", REV(0),
     0x0806E568, 0x0806E584, 0x08099F14, 0x0809A1AC, 0x08069958, 0x4020, 0x083DAE64,
     { 0xE6DE47BA, 0x6E7CC2BE, 0xD30D656E, 0xC40BF208, 0x9C26CCA4 },
     0x0803FBE8, 0x0804037C, 0x08042414, 0x080413C0, 0x0809A058, 0x02024284, 0x02024029, 0x0203FFF0,
@@ -78,11 +87,11 @@ static const struct actions LEAFGREEN_REV0 = {
     0x0203B0A9, 0x083F2D1C, 0x58, 108,
     { 0x07BEBC3A, 0x5B68C93A, 0xE4D65E08, 0xF9959006, 0x0111A86E, 0xBAB654BA, 0x059815BF },
     { 2, 2 }, -1, NULL,
-    0x080565B5,
+    0x080565B5, 0,
 };
 
 static const struct actions LEAFGREEN_REV1 = {
-    "BPGE", 1,
+    "BPGE", REV(1),
     0x0806E57C, 0x0806E598, 0x08099F28, 0x0809A1C0, 0x0806996C, 0x4020, 0x083DAED4,
     { 0xE6DE47BA, 0x6E7CC2BE, 0xD30D656E, 0xC40BF208, 0x9C26CCA4 },
     0x0803FBFC, 0x08040390, 0x08042428, 0x080413D4, 0x0809A06C, 0x02024284, 0x02024029, 0x0203FFF0,
@@ -94,7 +103,7 @@ static const struct actions LEAFGREEN_REV1 = {
     0x0203B0A9, 0x083F2D8C, 0x58, 108,
     { 0x07BEBC3A, 0xDBE480BD, 0x50C0C136, 0xF9959006, 0x0111A86E, 0xBAB654BA, 0x059815BF },
     { 2, 2 }, -1, NULL,
-    0x080565C9,
+    0x080565C9, 0,
 };
 
 // Emerald has no SetFlyWarpDestination: CB_ExitFlyMap's heal location / map
@@ -103,11 +112,11 @@ static const struct actions LEAFGREEN_REV1 = {
 static const struct fly_heal EMERALD_HEAL = {
     0x08084CCC, 0x08084C28, 0x080B69DC, 0x03005D90,
     { 15, 58 }, { 11, 22 },
-    0, 12, 13,
+    0, 12, 13, false,
 };
 
 static const struct actions EMERALD = {
-    "BPEE", 0,
+    "BPEE", REV(0),
     0x0809D694, 0x0809D6B0, 0x080D6724, 0x080D6AA4, 0x08098E6C, 0x4021, 0x085839A0,
     { 0x7D0D07B6, 0x519C39C0, 0x312F6576, 0x379EF742, 0x2532A407 },
     0x0806A518, 0x0806ACAC, 0, 0x0806BD04, 0x080D6928, 0x020244EC, 0x020244E9, 0x0203FFF0,
@@ -119,10 +128,90 @@ static const struct actions EMERALD = {
     0x0203CED1, 0x085A1E3C, 0, 50,
     { 0xBCF97BF3, 0x13BE1A7A, 0x4B625BC4, 0xF9959006, 0xB9FB85A7, 0xB037C8AF, 0x74DBCE3A, 0x2F1D18CA, 0xA284286D },
     { 2, 4 }, 58, &EMERALD_HEAL,
-    0x08085E5D,
+    0x08085E5D, 0,
 };
 
-static const struct actions* const ALL[] = { &FIRERED_REV1, &LEAFGREEN_REV0, &LEAFGREEN_REV1, &EMERALD };
+// Ruby / Sapphire (FIELD_ITEMS_RUBY / _SAPPHIRE, PC_*, FLY_*, and the English
+// rev 0 ports from FieldItemsPortsGen.kt): revs 1 and 2 are one build of the
+// code. Emerald's ways - no PokemonItemUseNoEffect (the effect is tried and
+// undone), the heal-warp FLY - with the party in IWRAM, 349 items, gSaveBlock2
+// in place and the Fly map's own type function (VISITED towns 2, the Battle
+// Tower 4). Sapphire is Ruby's code a few bytes on.
+#define RS_PARTY(addBag)                                                            \
+    0x0803CB60, 0x0803D1FC, 0, 0x0803E18C, addBag, 0x03004360, 0x03004350, 0x0203FFF0, \
+    349, { 5, 3 },                                                                  \
+    { 0x7D459654, 0x59B8ECA4, 0xEADAC6C9, 0x891E35D5 }
+#define RS_BAG_CRCS { 0x98EFB2B6, 0x82AA042B, 0x87E0CA93, 0xD7C65886, 0xA306873D }
+
+static const struct fly_heal RS_HEAL = {
+    0x08053558, 0x080534B0, 0x080865DC, 0x02024EA4,
+    { 15, 58 }, { 11, 21 },
+    0, 12, 13, true,
+};
+static const struct fly_heal RS_HEAL_REV0 = {
+    0x08053538, 0x08053490, 0x080865BC, 0x02024EA4,
+    { 15, 58 }, { 11, 21 },
+    0, 12, 13, true,
+};
+
+static const struct actions RUBY = {
+    "AXVE", REV(1) | REV(2),
+    0x08069274, 0x08069290, 0x080A92F4, 0x080A9558, 0x08065568, 0x4021, 0x083C5580,
+    RS_BAG_CRCS,
+    RS_PARTY(0x080A9444),
+    { 0x080C9DD0, 0x080C9E5C, 0x080C9E78, 0x080CA034 },
+    0x080655D8, 60, 0x0814B1B4, 0x08096121, { 0xBC36478C, 0x62C153A4 },
+    0x08069360, 0x80C, 0x08054244, 0x080FB778, 0x0807D664, 0x08065550, 0x0806555C, 0,
+    0x03005CE0, 0x083E793C, 0, 50,
+    { 0xAC4D17B2, 0x6F375BAA, 0x0190971B, 0xF9959006, 0xA003C21A, 0x9807B468, 0x5BF43808, 0x2F1D18CA, 0xB2A1E0F7 },
+    { 2, 4 }, 58, &RS_HEAL,
+    0x080543C5, 0x0202E828,
+};
+
+static const struct actions SAPPHIRE = {
+    "AXPE", REV(1) | REV(2),
+    0x08069278, 0x08069294, 0x080A92F4, 0x080A9558, 0x0806556C, 0x4021, 0x083C55DC,
+    RS_BAG_CRCS,
+    RS_PARTY(0x080A9444),
+    { 0x080C9DD0, 0x080C9E5C, 0x080C9E78, 0x080CA034 },
+    0x080655DC, 60, 0x0814B1B4, 0x08096121, { 0xBC36478C, 0xA79046B8 },
+    0x08069364, 0x80C, 0x08054248, 0x080FB778, 0x0807D664, 0x08065554, 0x08065560, 0,
+    0x03005CE0, 0x083E7998, 0, 50,
+    { 0xAC4D17B2, 0x6F375BAA, 0x0190971B, 0xF9959006, 0xA003C21A, 0x9807B468, 0x5BF43808, 0x2F1D18CA, 0xB7ABAD76 },
+    { 2, 4 }, 58, &RS_HEAL,
+    0x080543C9, 0x0202E828,
+};
+
+static const struct actions RUBY_REV0 = {
+    "AXVE", REV(0),
+    0x08069254, 0x08069270, 0x080A92D4, 0x080A9538, 0x08065548, 0x4021, 0x083C5564,
+    RS_BAG_CRCS,
+    RS_PARTY(0x080A9424),
+    { 0x080C9DB0, 0x080C9E3C, 0x080C9E58, 0x080CA014 },
+    0x080655B8, 60, 0x0814B194, 0x08096101, { 0xBC36478C, 0x62C153A4 },
+    0x08069340, 0x80C, 0x08054224, 0x080FB758, 0x0807D644, 0x08065530, 0x0806553C, 0,
+    0x03005CE0, 0x083E7920, 0, 50,
+    { 0xAC4D17B2, 0x6F375BAA, 0x22721D44, 0xF9959006, 0xA003C21A, 0x9807B468, 0x5BF43808, 0x2F1D18CA, 0xD5F7FEC3 },
+    { 2, 4 }, 58, &RS_HEAL_REV0,
+    0x080543A5, 0x0202E828,
+};
+
+static const struct actions SAPPHIRE_REV0 = {
+    "AXPE", REV(0),
+    0x08069258, 0x08069274, 0x080A92D4, 0x080A9538, 0x0806554C, 0x4021, 0x083C55BC,
+    RS_BAG_CRCS,
+    RS_PARTY(0x080A9424),
+    { 0x080C9DB0, 0x080C9E3C, 0x080C9E58, 0x080CA014 },
+    0x080655BC, 60, 0x0814B194, 0x08096101, { 0xBC36478C, 0xA79046B8 },
+    0x08069344, 0x80C, 0x08054228, 0x080FB758, 0x0807D644, 0x08065534, 0x08065540, 0,
+    0x03005CE0, 0x083E7978, 0, 50,
+    { 0xAC4D17B2, 0x6F375BAA, 0x22721D44, 0xF9959006, 0xA003C21A, 0x9807B468, 0x5BF43808, 0x2F1D18CA, 0xD0FDB342 },
+    { 2, 4 }, 58, &RS_HEAL_REV0,
+    0x080543A9, 0x0202E828,
+};
+
+static const struct actions* const ALL[] = { &FIRERED_REV1, &LEAFGREEN_REV0, &LEAFGREEN_REV1, &EMERALD,
+                                             &RUBY, &SAPPHIRE, &RUBY_REV0, &SAPPHIRE_REV0 };
 
 #define ITEM_SIZE 44
 #define ITEM_PARAM 0x13
@@ -188,7 +277,7 @@ static const struct support* support_for(const struct pd_game* g) {
     if (!rom || !g->cfg) return &s;
     for (size_t i = 0; i < sizeof(ALL) / sizeof(ALL[0]); i++) {
         const struct actions* t = ALL[i];
-        if (strncmp(g->code, t->code, 4) || g->revision != t->revision) continue;
+        if (strncmp(g->code, t->code, 4) || g->revision < 0 || g->revision > 31 || !(t->revisions & REV(g->revision))) continue;
         const uint32_t fns[5] = { t->varGet, t->varSet, t->checkBagHasItem, t->removeBagItem, t->fieldControlsLocked };
         bool ok = true;
         for (int k = 0; k < 5 && ok; k++) ok = crc_ok(g, fns[k], t->crcs[k]);
@@ -490,7 +579,9 @@ static enum pd_act_result fly_gate(struct ctx* c) {
     const struct actions* t = c->t;
     if (locked(c)) return PD_ACT_NOT_NOW;
     if (call(c, t->flagGet, (uint32_t) t->badgeFlag, 0, 0, 0) != 1) return PD_ACT_NO_BADGE;
-    if (call(c, t->setUpFieldMoveFly, 0, 0, 0, 0) != 1) return PD_ACT_CANT_FLY_HERE;
+    uint32_t arg = 0;
+    if (t->mapHeader) arg = read8(c, t->mapHeader + 0x17); // gMapHeader.mapType
+    if (call(c, t->setUpFieldMoveFly, arg, 0, 0, 0) != 1) return PD_ACT_CANT_FLY_HERE;
     return c->failed ? PD_ACT_FAILED : PD_ACT_NONE;
 }
 
@@ -571,9 +662,13 @@ static bool warp(struct ctx* c, struct pd_act* a) {
         if (h->specialMapsec[k] == mapsec) heal = h->specialHeal[k];
     }
     if (mapsec == h->genderMapsec) {
+        uint32_t block = h->saveBlock2Ptr;
         uint8_t w[4];
-        if (!c->io->read(c->io->ctx, h->saveBlock2Ptr, w, 4)) return false;
-        heal = read8(c, u32(w) + 8) == 0 ? h->maleHeal : h->femaleHeal;
+        if (!h->saveBlock2Static) {
+            if (!c->io->read(c->io->ctx, h->saveBlock2Ptr, w, 4)) return false;
+            block = u32(w);
+        }
+        heal = read8(c, block + 8) == 0 ? h->maleHeal : h->femaleHeal;
     }
     if (heal) call(c, h->toHealLocation, (uint32_t) heal, 0, 0, 0);
     else if (entry[0] | entry[1]) call(c, h->toMapWarp, entry[0], entry[1], 0xFFFFFFFFu, 0);

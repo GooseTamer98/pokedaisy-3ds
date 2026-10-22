@@ -34,14 +34,16 @@ all been tried on hardware yet, and speed there isn't measured. Target the **New
     for its summary (moves, type, PP); **TAKE** there puts its held item back
     in the bag (same games as BAG's USE).
   - **BATTLE**: opens by itself in a battle and goes back after it. On retail
-    English FireRed rev 1, LeafGreen and Emerald it opens on the app's
+    English FireRed rev 1, LeafGreen, Emerald, Ruby and Sapphire it opens on the app's
     **CONTROLS**: a big FIGHT (with your Pokémon's icon), BAG, RUN and
     POKéMON. FIGHT opens the move grid (each move with its verdict on the
     foe), POKéMON the party (OUT, BEST = SUGGESTIONS' top pick); a pick
     presses the game's own menu for you - the cursor written where the game
     keeps it and A pressed once, a switch steered through the game's party
     menu - while your own buttons wait. With the game's bag or party screen
-    up, BACK; INFO and SUGGESTIONS sit above the buttons. **INFO**:
+    up, BACK; INFO and SUGGESTIONS sit above the buttons. Ruby and Sapphire
+    keep their party cursor in a sprite, so there POKéMON opens the game's
+    own party screen (as in the app). **INFO**:
     the foe and you (with the game's own party icons, read from your ROM),
     your moves with the app's verdicts (SUPER 2x / NEUTRAL 1x / RESISTED 1/2x /
     IMMUNE 0x / STATUS). **SUGGESTIONS**: your party's three best picks against
@@ -52,13 +54,14 @@ all been tried on hardware yet, and speed there isn't measured. Target the **New
     RESERVE / UNSEEN) and have INFO and SUGGESTIONS work against it, tap it
     again to follow the battle.
   - **BAG**: ALL, FAVORITES (once you star something) and the pockets in the
-    game's own order and colours (FireRed's or Emerald's bag), SORT (DEFAULT /
+    game's own order and colours (FireRed's or Emerald's bag; Ruby / Sapphire
+    look like Emerald, as in the app), SORT (DEFAULT /
     NAME / TYPE / COUNT), item names and counts as the game prints them (TMs
     with their move), a list a drag scrolls, the tapped item's icon and
-    description (both from your ROM) with a star that keeps it on top for that
+    description (both from your ROM; Ruby / Sapphire have no item icons) with a star that keeps it on top for that
     game (saved in the settings file), and for a TM who in the party can learn
     it (ABLE / NO / LEARNED, BEST from the app's move advice). On retail
-    English FireRed rev 1, LeafGreen and Emerald, **USE** (a Repel at once;
+    English FireRed rev 1, LeafGreen, Emerald, Ruby and Sapphire, **USE** (a Repel at once;
     medicine and PP items on a Pokémon you pick, with the game's own "no
     effect" check per Pokémon and per move), **GIVE** and the **PC** (the
     game's own storage system, anywhere) work like the app's: the game's own
@@ -87,17 +90,21 @@ all been tried on hardware yet, and speed there isn't measured. Target the **New
     money, POKéDEX, play time with its blinking colon, badges, stars, the
     trainer pic; a tap flips it to the back (Hall of Fame debut, link battles,
     trades, FireRed's stickers ...) the way the game does. FireRed rev 1,
-    LeafGreen and Emerald, as in the app.
-- Games: retail English **FireRed / LeafGreen (rev 0 and 1)** and **Emerald**.
-  POKéDEX and GUIDE's wild / BOSS parts read ROM tables mapped for FireRed
-  rev 1, LeafGreen (rev 0 and 1) and Emerald, as in the app; on FireRed rev 0
+    LeafGreen and Emerald, as in the app (Ruby / Sapphire have no card there either).
+- Games: retail English **FireRed / LeafGreen (rev 0 and 1)**, **Emerald** and
+  **Ruby / Sapphire (rev 0, 1 and 2)**. Ruby and Sapphire run as Emerald (its
+  look, Hoenn's map) with their own engine's switches: the party in IWRAM,
+  the save blocks in place, no encryption key, the bag's table in the ROM, a
+  two-page POKéDEX text, and a GUIDE of their own per version (TEAM MAGMA /
+  AQUA, GROUDON / KYOGRE, LATIOS / LATIAS). POKéDEX and GUIDE's wild / BOSS
+  parts read ROM tables mapped for FireRed rev 1, LeafGreen (rev 0 and 1),
+  Emerald and Ruby / Sapphire, as in the app; on FireRed rev 0
   (which the app has no tables for either) MAP works, POKéDEX says it's not
   available yet, and GUIDE has its pages and HERE's people / items. The FOE
-  TEAM's addresses are known for FireRed / LeafGreen rev 1 and Emerald (as in
-  the app); the icons and the bag's item descriptions (read from the ROM's
-  gItems, never bundled) for all five. ROM hacks, other languages, Ruby / Sapphire and Game Boy
-  aren't ported yet; they show "not
-  supported".
+  TEAM's addresses are known for FireRed / LeafGreen rev 1, Emerald and Ruby /
+  Sapphire (as in the app); the icons and the bag's item descriptions (read
+  from the ROM's gItems, never bundled) for all of them. ROM hacks, other
+  languages and Game Boy aren't ported yet; they show "not supported".
 
 ## Controls
 
@@ -150,7 +157,7 @@ Everything runs in Docker, so it works the same on a Mac or a cloud session.
 
 ```sh
 cd 3ds
-make decomps       # pret's FireRed rev 1 / Emerald, = retail (below; optional)
+make decomps       # pret's FireRed rev 1 / Emerald / Ruby / Sapphire, = retail (below; optional)
 make preview       # the companion from the RAM fixtures -> build/shots/*.png
 make act-test      # USE / GIVE / TAKE / PC / FLY and the BATTLE controls on the decomp ROMs (host mGBA)
 make 3ds           # ctr/pokedaisy.3dsx (devkitpro/devkitarm image)
@@ -179,7 +186,7 @@ make tables        # regenerate core/*_gen.c and ctr/icon.png from the app
   every UI change here. `PD_PREVIEW_HITS=1` also prints each shot's tap
   targets, for writing the Azahar steps.
 - **`make act-test`** runs the game actions for real, on the host: each decomp
-  ROM (FireRed rev 1, LeafGreen rev 0 / 1, Emerald) booted in a libmgba built
+  ROM (FireRed rev 1, LeafGreen rev 0 / 1, Emerald, Ruby / Sapphire rev 1 / 2) booted in a libmgba built
   from the submodule, a fixture's RAM loaded over the running game, then a
   Potion's party pick and use, TAKE and GIVE, a Repel, FLY (landing in the
   town) and the PC (reaching the storage screen) through `core/pd_action.c`
@@ -187,14 +194,18 @@ make tables        # regenerate core/*_gen.c and ctr/icon.png from the app
   `battle` runs start a wild battle with the game's own script commands
   (`setwildbattle` / `dowildbattle`) and drive its menu through
   `core/pd_bctl.c`: BAG and back, FIGHT + a move (its PP spent), a switch (the
-  picked one out), RUN (the battle over). The
+  picked one out; on Ruby / Sapphire, the game's party screen and back), RUN
+  (the battle over). Ruby / Sapphire rev 0 have no fixture of their own (the
+  fixtures' RAM holds rev 1's code pointers): `tables` runs only check that
+  their action and battle tables match their code. The
   preview only draws those screens, with the game's answers filled in by hand
   (`-act-*` shots).
 - **`make decomps`** (`test/build_decomps.sh`; git, a C compiler, libpng and
-  devkitARM) builds pret's pokefirered (rev 1) and pokeemerald at pinned
-  commits into `build/decomps/` and checks they match the retail SHA1s. The
-  tabs that read the ROM need one; the preview passes them in when they're
-  there (or `make preview FR_ROM=... EM_ROM=...`). Never commit them.
+  devkitARM) builds pret's pokefirered (rev 1), pokeemerald and pokeruby
+  (Ruby / Sapphire rev 0, 1, 2) at pinned commits into `build/decomps/` and
+  checks they match the retail SHA1s. The tabs that read the ROM need one; the
+  preview passes them in when they're there (or `make preview FR_ROM=...
+  EM_ROM=... RU_ROM=... SA_ROM=...`). Never commit them.
 - **Fixture ROMs** (`test/fixture_rom.c`) are a few lines of GBA homebrew that
   copy a fixture's RAM into the GBA and idle, with FireRed's or Emerald's game
   code in the header. The companion can't tell them from the real game, so the
