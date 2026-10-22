@@ -364,7 +364,11 @@ static bool run_game(const char* file) {
     mCoreInitConfig(core, NULL);
     core->setVideoBuffer(core, (color_t*) gpu_game_buffer(), GPU_GAME_STRIDE);
     core->setAudioBufferSize(core, AUDIO_SAMPLES);
-    if (!core->loadROM(core, rom)) {
+    // Into mGBA's fixed ROM buffer (32 MB, set aside at start by its 3DS
+    // heap code), as its own frontend does: core->loadROM straight from the
+    // file copied the ROM into the 20 MB linear (GPU) heap instead, and
+    // never gave it back. This closes rom.
+    if (!mCorePreloadVF(core, rom)) {
         core->deinit(core);
         show_message("The game didn't load (too big?):", file);
         return true;
