@@ -25,8 +25,9 @@ SCALE = 10
 EXTRA = "é×"
 CHARS = [chr(c) for c in range(32, 127)] + list(EXTRA)
 
-# Pixel Operator has no gender symbols; these are drawn here, on the font's
-# cap rows (4-12), for the party's gender marks and Nidoran's names.
+# Pixel Operator has no gender symbols or arrow; these are drawn here, on the
+# font's cap rows (4-12), for the party's gender marks, Nidoran's names and
+# the GUIDE's evolutions ("LV 16 → IVYSAUR", as the app writes them).
 PIXEL_GLYPHS = {
     "♂": (8, [
         "....###",
@@ -49,6 +50,17 @@ PIXEL_GLYPHS = {
         "#####",
         "..#..",
         "..#..",
+    ]),
+    "→": (8, [
+        ".......",
+        ".......",
+        "....#..",
+        ".....#.",
+        "######.",
+        ".....#.",
+        "....#..",
+        ".......",
+        ".......",
     ]),
 }
 CAP_TOP = 4

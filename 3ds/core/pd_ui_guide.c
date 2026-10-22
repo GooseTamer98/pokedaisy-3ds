@@ -7,6 +7,7 @@
 #include <string.h>
 
 #include "pd_dex.h"
+#include "pd_evo.h"
 #include "pd_guide.h"
 #include "pd_tables.h"
 #include "pd_ui_internal.h"
@@ -26,7 +27,7 @@ struct view_entry {
     char title[48], detail[32];
     const char* hint;   // NULL = none
     const char* answer; // "" = nothing to reveal
-    char hintBuf[96], answerBuf[220];
+    char hintBuf[96], answerBuf[300];
     bool owned;
 };
 
@@ -35,7 +36,7 @@ struct view_section {
     int first, count;
 };
 
-enum page_kind { PAGE_HERE, PAGE_BOSS, PAGE_STATIC };
+enum page_kind { PAGE_HERE, PAGE_BOSS, PAGE_STATIC, PAGE_EVO };
 struct page_ref {
     enum page_kind kind;
     int index; // the guide's page, for PAGE_STATIC
@@ -86,6 +87,7 @@ static void build_pages(const struct pd_game* g, const struct pd_snapshot* s, co
     for (int i = 0; i < gd->pageCount && pageCount < MAX_PAGES; i++) {
         pages[pageCount++] = (struct page_ref) { PAGE_STATIC, i, page_label(gd->pages[i].title) };
     }
+    if (pd_evo_available(g) && pageCount < MAX_PAGES) pages[pageCount++] = (struct page_ref) { PAGE_EVO, 0, "EVOLVE" };
 }
 
 // --- the pages ---
@@ -248,8 +250,77 @@ static void build_here(const struct pd_game* g, const struct pd_snapshot* s, con
     }
 
     if (intro) {
-        snprintf(intro->note, sizeof(intro->note), "%s",
+        // The area's DexNav (GitHub #85): how many of its wild POKéMON are
+        // caught, every method counted once.
+        char caught[40] = "";
+        if (hasWild && s->dexOk) {
+            int seen[PD_WILD_METHODS * PD_WILD_MAX], n = 0, got = 0;
+            for (int m = 0; m < PD_WILD_METHODS; m++) {
+                for (int i = 0; i < wild.count[m]; i++) {
+                    int nat = pd_dex_national(g, wild.mons[m][i].species);
+                    bool dup = nat <= 0;
+                    for (int k = 0; k < n && !dup; k++) dup = seen[k] == nat;
+                    if (dup) continue;
+                    seen[n++] = nat;
+                    got += pd_dex_caught(s, nat);
+                }
+            }
+            if (n) snprintf(caught, sizeof(caught), "%d of %d caught here. ", got, n);
+        }
+        snprintf(intro->note, sizeof(intro->note), "%s%s", caught,
                  entryCount == before ? "Nothing listed for this area." : "Its buildings included. A ball = done.");
+    }
+}
+
+// EVOLUTIONS, from the ROM's own table: the party's first (how each of them
+// evolves), then every species that evolves some way other than plain
+// levelling. The hint is only the kind (LEVEL UP, USE AN ITEM, TRADE...); the
+// answer names what it becomes.
+static void evo_entry(const struct pd_game* g, int species) {
+    struct view_entry* e = add_entry();
+    if (!e) return;
+    struct pd_evo evos[PD_EVOS_PER_MON];
+    int n = pd_evolutions(g, species, evos);
+    pd_species_name(species, e->title, sizeof(e->title));
+    if (!n) {
+        snprintf(e->answerBuf, sizeof(e->answerBuf), "Doesn't evolve.");
+        e->answer = e->answerBuf;
+        return;
+    }
+    size_t used = 0;
+    for (int i = 0; i < n && used < sizeof(e->answerBuf); i++) {
+        char line[120];
+        pd_evo_text(g, &evos[i], line, sizeof(line));
+        used += (size_t) snprintf(e->answerBuf + used, sizeof(e->answerBuf) - used, "%s%s", i ? "; " : "", line);
+    }
+    e->answer = e->answerBuf;
+    used = 0;
+    for (int i = 0; i < n && used < sizeof(e->hintBuf); i++) {
+        const char* kind = pd_evo_kind(&evos[i]);
+        bool dup = false;
+        for (int k = 0; k < i && !dup; k++) dup = !strcmp(pd_evo_kind(&evos[k]), kind);
+        if (dup) continue;
+        used += (size_t) snprintf(e->hintBuf + used, sizeof(e->hintBuf) - used, "%s%s", used ? " / " : "", kind);
+    }
+    e->hint = e->hintBuf;
+}
+
+static void build_evolutions(const struct pd_game* g, const struct pd_snapshot* s) {
+    add_section("YOUR PARTY", NULL);
+    for (int i = 0; i < s->partyCount; i++) {
+        int sp = s->party[i].species;
+        bool dup = sp == PD_SPECIES_EGG;
+        for (int k = 0; k < i && !dup; k++) dup = s->party[k].species == sp;
+        if (!dup) evo_entry(g, sp);
+    }
+    if (!sections[sectionCount - 1].count) sectionCount--;
+    add_section("SPECIAL EVOLUTIONS", NULL);
+    struct pd_evo evos[PD_EVOS_PER_MON];
+    for (int sp = 1; sp < PD_SPECIES_EGG; sp++) {
+        int n = pd_evolutions(g, sp, evos);
+        bool special = false;
+        for (int i = 0; i < n && !special; i++) special = !pd_evo_plain(&evos[i]);
+        if (special) evo_entry(g, sp);
     }
 }
 
@@ -409,6 +480,7 @@ void ui_guide_tab(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game* g
     const struct page_ref* p = &pages[ui->guidePage];
     if (p->kind == PAGE_HERE) build_here(g, s, gd);
     else if (p->kind == PAGE_BOSS) build_bosses(g, s, gd);
+    else if (p->kind == PAGE_EVO) build_evolutions(g, s);
     else build_static(g, s, &gd->pages[p->index]);
     if (ui->guideOpen >= entryCount) ui->guideOpen = -1;
 
@@ -435,7 +507,7 @@ void ui_guide_notice(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game
     int ty = y + lf + 2;
     ty += LINE * pd_text_wrap(c, x + lf + 6, ty, w - 2 * (lf + 6), LINE, 6, text, PD_LABEL, PD_LABEL_SHADOW) + 4;
     pd_text_wrap(c, x + lf + 6, ty, w - 2 * (lf + 6), LINE, 2,
-                 "HERE and BOSS come straight from the game's own data.", PD_MUTED, PD_MUTED_SHADOW);
+                 "HERE, BOSS and EVOLVE come straight from the game's own data.", PD_MUTED, PD_MUTED_SHADOW);
     y += h + 4;
     ui_button(ui, c, x, y, 120, 24, "GO BACK", HIT_NOTICE_BACK);
     ui_button(ui, c, x + w - 140, y, 140, 24, "I UNDERSTAND", HIT_NOTICE_OK);

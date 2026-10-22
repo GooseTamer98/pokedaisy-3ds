@@ -57,6 +57,11 @@ struct pd_config {
     uint32_t frontPics;        // {LZ77 pointer, size, tag} per species
     uint32_t palettes;         // {LZ77 pointer, tag} per species
     uint32_t regionalOrder;    // u16 national numbers; 0 = national 1..regionalCount
+    // The DEX entry's sections and the GUIDE's EVOLUTIONS (PokedexTables /
+    // GuideTables): gEvolutionTable (5 x {method, param, target} per species),
+    // the TM / HM compatibility (8 bytes a species) and sTMHMMoves (u16 per
+    // TM / HM), gMonFootprintTable (a pointer per species) and gMapGroups.
+    uint32_t evolutions, tmhmLearnsets, tmhmMoves, footprints, mapGroups;
     int regionalCount;
     const char* regionName;
     // ... and the save: SaveBlock2's owned / seen flags, SaveBlock1's two

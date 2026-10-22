@@ -331,8 +331,8 @@ int main(int argc, char** argv) {
     shot(out, name, "guide", px);
     if (has_hit(&p, HIT_NOTICE_OK)) {
         tap(&p, HIT_NOTICE_OK, 0);
-        static const char* const PAGE_SHOTS[] = { "guide-p0", "guide-p1", "guide-p2", "guide-p3", "guide-p4" };
-        for (int page = 0; page < 5 && has_hit(&p, HIT_GUIDE_PAGE + page); page++) {
+        static const char* const PAGE_SHOTS[] = { "guide-p0", "guide-p1", "guide-p2", "guide-p3", "guide-p4", "guide-p5" };
+        for (int page = 0; page < 6 && has_hit(&p, HIT_GUIDE_PAGE + page); page++) {
             tap(&p, HIT_GUIDE_PAGE + page, 0);
             shot(out, name, PAGE_SHOTS[page], px);
             if (has_hit(&p, HIT_GUIDE_LIST)) {
@@ -349,11 +349,13 @@ int main(int argc, char** argv) {
         tap(&p, HIT_GUIDE_PAGE, 0);
         drag(&p, HIT_GUIDE_LIST, -4000);
         shot(out, name, "guide-p0-end", px);
-        // A hint, then its answer, on the last page (STUCK? has hints).
+        // A hint, then its answer, on the last page (EVOLVE, else STUCK?).
         int last = 0;
         while (has_hit(&p, HIT_GUIDE_PAGE + last + 1)) last++;
         tap(&p, HIT_GUIDE_PAGE + last, 0);
         int row = first_hit(&p, HIT_GUIDE_ROW, HIT_GUIDE_ROW + 800);
+        // EVOLVE's first entry may not evolve (no hint): its second shows both steps.
+        if (row >= 0 && has_hit(&p, row + 1)) row++;
         if (row >= 0) {
             tap(&p, row, 0);
             shot(out, name, "guide-hint", px);
