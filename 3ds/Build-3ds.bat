@@ -52,11 +52,14 @@ if /i "%~1"=="clean" if exist "%CTR%\build" (
 
 rem CMAKE_POLICY_VERSION_MINIMUM: CMake 4 refuses mGBA 0.10.5's cmake_minimum_required(3.1)
 rem without it; older CMake ignores it.
+rem CMAKE_DEPENDS_USE_COMPILER=OFF: devkitARM writes C:/... paths into its .d files, and make
+rem reads that colon as a rule ("multiple target patterns") on every build after the first.
 echo == Configuring
 pushd "%CTR%"
 cmake -S . -B build -G "Unix Makefiles" -Wno-dev ^
     -DCMAKE_BUILD_TYPE=Release ^
     -DCMAKE_POLICY_VERSION_MINIMUM=3.5 ^
+    -DCMAKE_DEPENDS_USE_COMPILER=OFF ^
     -DCMAKE_TOOLCHAIN_FILE=../../third_party/mgba/src/platform/3ds/CMakeToolchain.txt
 if errorlevel 1 goto :fail_popd
 
