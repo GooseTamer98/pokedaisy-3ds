@@ -8,8 +8,8 @@ portable C core that re-implements the companion's reading and drawing, plus a
 3DS host and a desktop preview tool around it.
 
 **Status: early preview.** It builds, boots and works in the Azahar emulator
-(below); it has not been run on a real 3DS yet, so speed on hardware is
-unknown. Target the **New 3DS / New 3DS XL / New 2DS XL** first; the original
+(below), and games load on a New 3DS; the companion's features haven't
+all been tried on hardware yet, and speed there isn't measured. Target the **New 3DS / New 3DS XL / New 2DS XL** first; the original
 3DS / 3DS XL / 2DS may not hold full speed (see "Hardware").
 
 ## What works

@@ -108,8 +108,10 @@ SHA1s, checked) into `3ds/build/decomps/`, the preview passes them in, and `fixt
 fixture ROM over the decomp's start (`fixture-*-rom.gba`: the tables sit past 0x08200000) - build/ only,
 never committed. Only retail English FireRed / LeafGreen / Emerald so far (ROM table addresses for FireRed
 rev 1, LeafGreen rev 0 / 1 and Emerald: FireRed rev 0 gets MAP but no POKéDEX, and GUIDE without wild / BOSS,
-as in the app); item descriptions are read from the ROM's gItems (`pd_item_description`), never bundled; never
-run on a real 3DS yet. Its tabs: PARTY, BAG, MAP, GUIDE, POKéDEX (BATTLE takes the last chip in a battle: INFO /
+as in the app); item descriptions are read from the ROM's gItems (`pd_item_description`), never bundled. Games
+boot on a New 3DS (2026-10-22: Emerald / LeafGreen load) - ROMs must go through `mCorePreloadVF` into mGBA's fixed
+ROM buffer (`core->loadROM` on the SD file put a 16 MB copy in the linear heap, never freed: a crash on hardware, fine in
+Azahar). Its tabs: PARTY, BAG, MAP, GUIDE, POKéDEX (BATTLE takes the last chip in a battle: INFO /
 SUGGESTIONS + the FOE TEAM, ported from BattleInfoScreen / SuggestionsScreen / CompanionScreen's foe state), and
 SETTINGS (screen mode, FF, one save state slot - states never carry the save data), with the TRAINER CARD
 under it (`pd_card`: its renders match `TrainerCardTest`'s pinned CRCs - `make preview` prints them; keep it
