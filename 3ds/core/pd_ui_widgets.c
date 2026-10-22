@@ -182,3 +182,15 @@ void ui_held_marker(struct pd_canvas* c, const struct pd_game* g, int x, int y, 
         }
     }
 }
+
+int ui_pill(struct pd_canvas* c, int x, int y, const char* text, uint32_t fill) {
+    int w = pd_text_width(text) + 6;
+    pd_round_rect(c, x, y + 1, w, 14, 2, fill);
+    pd_text(c, x + 3, y - 1, text, 0xFFFFFF, PD_NO_SHADOW);
+    return w;
+}
+
+void ui_star(struct pd_canvas* c, int x, int y, uint32_t color) {
+    static const uint16_t STAR[9] = { 0x010, 0x038, 0x038, 0x1FF, 0x0FE, 0x07C, 0x07C, 0x0EE, 0x0C6 };
+    pd_bitmap(c, x, y, STAR, 9, color);
+}

@@ -446,6 +446,17 @@ static void advise(const struct mon* m, int move, struct pd_advice* a) {
     why_new(a, m, move, cur[best], cur, n, ref);
 }
 
+static void mon_of(const struct pd_mon* p, struct mon* m) {
+    memset(m, 0, sizeof(*m));
+    pd_species_type_pair(p->species, &m->t1, &m->t2);
+    m->attack = p->stats[1];
+    m->spAttack = p->stats[4];
+    m->level = p->level;
+    for (int i = 0; i < 4; i++) {
+        if (p->moves[i]) m->moves[m->count++] = p->moves[i];
+    }
+}
+
 static int by_bag_best(const void* x, const void* y) {
     const struct pd_learn_option *a = x, *b = y;
     bool sa = a->advice.verdict == PD_SKIP, sb = b->advice.verdict == PD_SKIP;
@@ -456,14 +467,8 @@ static int by_bag_best(const void* x, const void* y) {
 int pd_learn_options(const struct pd_game* g, const struct pd_snapshot* s, const struct pd_mon* p,
                      struct pd_learn_option* out, int max) {
     if (p->species <= 0 || p->species == PD_SPECIES_EGG) return 0;
-    struct mon m = { 0 };
-    pd_species_type_pair(p->species, &m.t1, &m.t2);
-    m.attack = p->stats[1];
-    m.spAttack = p->stats[4];
-    m.level = p->level;
-    for (int i = 0; i < 4; i++) {
-        if (p->moves[i]) m.moves[m.count++] = p->moves[i];
-    }
+    struct mon m;
+    mon_of(p, &m);
     int n = 0;
     // The next few level-up moves it doesn't know.
     struct pd_level_move lv[64];
@@ -506,4 +511,50 @@ int pd_learn_options(const struct pd_game* g, const struct pd_snapshot* s, const
     }
     qsort(out + first, (size_t) (n - first), sizeof(out[0]), by_bag_best);
     return n;
+}
+
+int pd_tm_item_move(const struct pd_game* g, int item) {
+    if (item < ITEM_TM01 || item > ITEM_HM08 || !g->cfg || !g->cfg->tmhmMoves) return 0;
+    const uint8_t* e = pd_rom_at(g, g->cfg->tmhmMoves + (uint32_t) (item - ITEM_TM01) * 2, 2);
+    return e ? e[0] | e[1] << 8 : 0;
+}
+
+int pd_tm_learners(const struct pd_game* g, const struct pd_snapshot* s, int item, struct pd_tm_learner* out) {
+    int move = pd_tm_item_move(g, item);
+    if (!move) return 0;
+    char label[8];
+    int idx = item - ITEM_TM01;
+    snprintf(label, sizeof(label), idx < 50 ? "TM%02d" : "HM%02d", idx < 50 ? idx + 1 : idx - 49);
+    int n = 0;
+    for (int i = 0; i < s->partyCount && i < PD_PARTY_SIZE; i++) {
+        const struct pd_mon* p = &s->party[i];
+        struct pd_tm_learner* l = &out[n++];
+        memset(l, 0, sizeof(*l));
+        l->fit = PD_TM_NOT_ABLE;
+        if (p->species <= 0 || p->species == PD_SPECIES_EGG) continue;
+        struct mon m;
+        mon_of(p, &m);
+        bool known = false;
+        for (int k = 0; k < m.count && !known; k++) known = m.moves[k] == move;
+        if (known) {
+            l->fit = PD_TM_LEARNED;
+            continue;
+        }
+        struct pd_tm_move tms[64];
+        int tn = pd_tm_moves(g, p->species, tms, 64);
+        for (int k = 0; k < tn; k++) {
+            if (!strcmp(tms[k].label, label)) l->fit = PD_TM_ABLE;
+        }
+        if (l->fit == PD_TM_ABLE) advise(&m, move, &l->advice);
+    }
+    return n;
+}
+
+int pd_tm_best(const struct pd_tm_learner* l, int n) {
+    int best = -1;
+    for (int i = 0; i < n; i++) {
+        if (l[i].fit != PD_TM_ABLE || l[i].advice.verdict == PD_SKIP) continue;
+        if (best < 0 || l[i].advice.gain > l[best].advice.gain) best = i;
+    }
+    return best;
 }

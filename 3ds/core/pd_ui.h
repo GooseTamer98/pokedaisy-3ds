@@ -50,10 +50,20 @@ enum pd_screen_mode {
 #define PD_FF_MAX 4
 
 // What the player set; the host loads and saves it (pd_settings.h).
+// The bag's starred items for one game (FavoriteItems: per ROM, by item id).
+#define PD_FAV_GAMES 8
+#define PD_FAV_MAX 32
+struct pd_favorites {
+    char game[8]; // the ROM's game code + revision ("BPRE1"), "" = unused
+    int count;
+    uint16_t items[PD_FAV_MAX];
+};
+
 struct pd_settings {
     int screenMode; // enum pd_screen_mode
     int ffSpeed;    // PD_FF_MIN..PD_FF_MAX
     int guideNotice; // a bit per game kind whose GUIDE notice was accepted
+    struct pd_favorites favorites[PD_FAV_GAMES];
 };
 
 enum pd_action {
@@ -83,6 +93,9 @@ struct pd_hit {
     bool scroll; // part of a list that a drag scrolls
 };
 
+enum { PD_BAG_ALL, PD_BAG_FAVORITES, PD_BAG_POCKET };
+enum pd_bag_sort { PD_SORT_DEFAULT, PD_SORT_NAME, PD_SORT_TYPE, PD_SORT_COUNT, PD_SORTS };
+
 enum pd_overlay {
     PD_OVERLAY_NONE,
     PD_OVERLAY_PICK_SCREEN,
@@ -109,9 +122,17 @@ struct pd_ui {
     int summarySlot; // party slot whose summary is open, -1 = none
     int summaryPage; // its MOVES / STATS / TYPES / LEARN page (PD_SUMMARY_*)
     int learnPick, learnScroll; // LEARN: the option opened (-1 = none), the list's scroll
-    int bagPocket;   // index into the game's own pocket order
-    int bagSelected; // item index in that pocket, -1 = none
-    int bagScroll;   // pixels
+    // BAG: the tab (PD_BAG_ALL, PD_BAG_FAVORITES or PD_BAG_POCKET + a
+    // PD_POCKET_*), the order (PD_SORT_*), the selected item (its id, 0 =
+    // none), the list's scroll (pixels) and whether the selection should be
+    // scrolled into view on the next draw. The draw leaves the tabs shown and
+    // each row's item for the taps.
+    int bagTab, bagSort, bagSelected, bagScroll;
+    bool bagReveal;
+    int bagTabs[PD_POCKET_COUNT + 2], bagTabCount;
+    uint16_t bagRowItem[PD_POCKET_COUNT * PD_POCKET_SLOTS];
+    int bagRows;
+    const struct pd_game* game; // the game last drawn (the BAG's stars are per game)
 
     // POKéDEX: the list's scroll, the open entry (national number, 0 = the
     // list), and which dex shows (-1 = the save's own: National once it has

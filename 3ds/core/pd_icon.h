@@ -17,4 +17,9 @@
 // nothing, when the game's icon tables aren't known or don't decode.
 bool pd_draw_mon_icon(struct pd_canvas* c, const struct pd_game* g, int species, int x, int y, bool faded);
 
+#define PD_ITEM_ICON 24
+// Draws item's bag icon (sItemIconTable: LZ77 tiles + palette, 24x24) with its
+// top-left at (x, y); false, drawing nothing, when it doesn't decode.
+bool pd_draw_item_icon(struct pd_canvas* c, const struct pd_game* g, int item, int x, int y);
+
 #endif

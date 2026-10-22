@@ -20,8 +20,9 @@ enum {
     HIT_BACK = 300,
     HIT_POCKET_PREV = 400,
     HIT_POCKET_NEXT = 401,
+    HIT_BAG_SORT = 402,
+    HIT_BAG_STAR = 403,
     HIT_BAG_LIST = 410,
-    HIT_BAG_ROW = 500,     // + item index
     HIT_SETTING = 600,     // + enum setting_row
     HIT_OPTION = 700,      // + pick-list option
     HIT_YES = 800,
@@ -53,6 +54,7 @@ enum {
     HIT_SUMMARY_PAGE = 3200, // + PD_SUMMARY_*
     HIT_LEARN_LIST = 3290,
     HIT_LEARN_ROW = 3300,    // + LEARN option
+    HIT_BAG_ROW = 4000,      // + row (ALL lists every pocket: up to 320)
 };
 
 enum setting_row {
@@ -104,8 +106,15 @@ bool ui_dex_act(struct pd_ui* ui, int id);
 bool ui_guide_act(struct pd_ui* ui, int id);
 bool ui_battle_act(struct pd_ui* ui, int id);
 bool ui_card_act(struct pd_ui* ui, int id);
+bool ui_bag_act(struct pd_ui* ui, int id);
 void ui_card_tab(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game* g, const struct pd_snapshot* s);
 bool ui_card_tick(struct pd_ui* ui, unsigned ms);
+
+// A pill of white text (VerdictPill), 14 px tall; returns its width.
+int ui_pill(struct pd_canvas* c, int x, int y, const char* text, uint32_t fill);
+// The pixel star (PixelIcons.star), 9x9; the favorites' gold.
+#define UI_FAVORITE 0xE0A010
+void ui_star(struct pd_canvas* c, int x, int y, uint32_t color);
 
 // The lists' caught / seen mark: a Poké Ball, or a grey one.
 void ui_ball(struct pd_canvas* c, int x, int y, bool caught);

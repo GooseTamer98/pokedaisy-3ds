@@ -42,9 +42,13 @@ unknown. Target the **New 3DS / New 3DS XL / New 2DS XL** first; the original
     or announced, fainted ones faded; tap one to see it (NEXT / FAINTED /
     RESERVE / UNSEEN) and have INFO and SUGGESTIONS work against it, tap it
     again to follow the battle.
-  - **BAG**: one pocket at a time in the game's own order and colours (FireRed's
-    or Emerald's bag), item names and counts as the game prints them, a list a
-    drag scrolls, the tapped item's description.
+  - **BAG**: ALL, FAVORITES (once you star something) and the pockets in the
+    game's own order and colours (FireRed's or Emerald's bag), SORT (DEFAULT /
+    NAME / TYPE / COUNT), item names and counts as the game prints them (TMs
+    with their move), a list a drag scrolls, the tapped item's icon and
+    description (both from your ROM) with a star that keeps it on top for that
+    game (saved in the settings file), and for a TM who in the party can learn
+    it (ABLE / NO / LEARNED, BEST from the app's move advice).
   - **MAP**: the game's own region map, rebuilt from your ROM (the app's
     `RomArt`: found by fingerprint, nothing bundled) - Kanto and the Sevii
     pages, or Hoenn - with the player's head where the game puts it, the place
@@ -141,7 +145,7 @@ make tables        # regenerate core/*_gen.c and ctr/icon.png from the app
 - **`make preview`** is this port's ui-preview: `desktop/pd_preview.c` reads a
   fixture's `ewram.bin` / `iwram.bin` (`app/src/test/resources/fixtures/`) and
   drives the companion with taps found by hit id - a pressed slot, a summary,
-  BATTLE, BAG (an item, a drag, the next pocket), SETTINGS, a pick-list, a
+  BATTLE, BAG (an item, a drag, SORT, a star, FAVORITES, a pocket, a TM), SETTINGS, a pick-list, a
   confirm, MAP (a tapped tile, the blink, PLACES), POKéDEX (scrolled, an
   entry, the next, the other dex), GUIDE (the notice, every page, a hint and
   its answer), BATTLE's INFO and SUGGESTIONS, the TRAINER CARD (blinked, mid-flip,

@@ -273,10 +273,7 @@ static void types_page(struct pd_canvas* c, int ix, int iw, int ty, const struct
 
 // A pill of white text (VerdictPill); returns its width.
 static int verdict_pill(struct pd_canvas* c, int x, int y, const char* text, uint32_t fill) {
-    int w = pd_text_width(text) + 6;
-    pd_round_rect(c, x, y + 1, w, 14, 2, fill);
-    pd_text(c, x + 3, y - 1, text, 0xFFFFFF, PD_NO_SHADOW);
-    return w;
+    return ui_pill(c, x, y, text, fill);
 }
 
 // CanLearnSection: NEXT LEVELS, then TMs IN THE BAG - each its label, name and
@@ -328,7 +325,7 @@ static void learn_page(struct pd_ui* ui, struct pd_canvas* c, const struct pd_ga
         verdict_pill(c, ix + 6, y + 17, buf, a->verdict == PD_SKIP ? VERDICT_GREY : LEARN_GREEN);
         const struct pd_move_stats* st = o->move < pd_move_stats_count ? &pd_move_stats[o->move] : NULL;
         int power = pd_move_power(o->move);
-        char pwr[8], acc[8];
+        char pwr[12], acc[12];
         snprintf(pwr, sizeof(pwr), power > 1 ? "%d" : "-", power);
         snprintf(acc, sizeof(acc), st && st->accuracy ? "%d" : "-", st ? st->accuracy : 0);
         snprintf(buf, sizeof(buf), "PWR %s  ACC %s  PP %d", pwr, acc, st ? st->pp : 0);

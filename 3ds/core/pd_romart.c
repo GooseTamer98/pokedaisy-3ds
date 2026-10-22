@@ -140,5 +140,5 @@ void pd_romart_scan(const struct pd_game* g) {
 
 const uint8_t* pd_romart_blob(const struct pd_game* g, enum pd_blob b) {
     pd_romart_scan(g);
-    return b >= 0 && b < PD_BLOB_COUNT ? found[b] : NULL;
+    return (unsigned) b < PD_BLOB_COUNT ? found[b] : NULL;
 }

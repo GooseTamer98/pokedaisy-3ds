@@ -271,16 +271,37 @@ int main(int argc, char** argv) {
         tap(&p, HIT_BATTLE_INFO, 0);
     }
 
-    // BAG: a tapped item shows its description; a drag scrolls the list; the
-    // arrow opens the next pocket.
+    // BAG: ALL first; a tapped item shows its icon and description; a drag
+    // scrolls the list; SORT steps the order; the star adds FAVORITES; the
+    // arrows step the tabs, and a TM shows who can learn it.
     tap(&p, HIT_TAB + PD_TAB_BAG, 0);
     shot(out, name, "bag", px);
     tap(&p, HIT_BAG_ROW + 2, 0);
     shot(out, name, "bag-item", px);
     drag(&p, HIT_BAG_LIST, -60);
     shot(out, name, "bag-scrolled", px);
+    tap(&p, HIT_BAG_SORT, 0);
+    shot(out, name, "bag-sort-name", px);
+    tap(&p, HIT_BAG_SORT, 0);
+    tap(&p, HIT_BAG_SORT, 0);
+    shot(out, name, "bag-sort-count", px);
+    tap(&p, HIT_BAG_SORT, 0);
+    tap(&p, HIT_BAG_STAR, 0);
+    shot(out, name, "bag-favorite", px);
+    tap(&p, HIT_POCKET_NEXT, 0);
+    shot(out, name, "bag-favorites-tab", px);
     tap(&p, HIT_POCKET_NEXT, 0);
     shot(out, name, "bag-pocket", px);
+    for (int i = 0; i < 6 && ui.bagTab != PD_BAG_POCKET + PD_POCKET_TMHM; i++) tap(&p, HIT_POCKET_NEXT, 0);
+    if (has_hit(&p, HIT_BAG_ROW)) {
+        tap(&p, HIT_BAG_ROW, 0);
+        shot(out, name, "bag-tm", px);
+    }
+    // The star again: unstarred, FAVORITES goes (the settings file stays clean).
+    tap(&p, HIT_POCKET_PREV, 0);
+    ui.bagTab = PD_BAG_ALL;
+    ui.bagSelected = 0;
+    for (int i = 0; i < PD_FAV_GAMES; i++) settings.favorites[i].count = 0;
 
     // SETTINGS, its pick-list and a confirm. FF lit, as while it runs.
     host.ffOn = true;

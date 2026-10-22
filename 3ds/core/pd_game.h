@@ -47,6 +47,8 @@ struct pd_config {
     // +0x0E, description pointer +0x14) - the bag's descriptions are read from
     // the player's ROM, never bundled. 0 = none.
     uint32_t items;
+    // sItemIconTable: {LZ77 tiles, LZ77 palette} per item, 24x24 (DecompIconSource.fetchItem).
+    uint32_t itemIcons;
 
     // POKéDEX (the app's PokedexTables): ROM tables ...
     uint32_t dexEntries;       // gPokedexEntries, by national number

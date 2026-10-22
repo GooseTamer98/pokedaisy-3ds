@@ -38,7 +38,6 @@ void pd_ui_init(struct pd_ui* ui, struct pd_settings* settings) {
     ui->tab = PD_TAB_PARTY;
     ui->summarySlot = -1;
     ui->learnPick = -1;
-    ui->bagSelected = -1;
     ui->pressedId = -1;
     ui->battleSlot = -1;
     ui->dexNational = -1;
@@ -125,6 +124,7 @@ static void tab_bar(struct pd_ui* ui, struct pd_canvas* c, const struct pd_host_
 void pd_ui_draw(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game* g,
                 const struct pd_snapshot* s, const struct pd_host_info* host) {
     ui->hitCount = 0;
+    ui->game = g;
     pd_backdrop(c);
     tab_bar(ui, c, host);
     if (ui->tab == PD_TAB_SETTINGS) {
@@ -219,13 +219,7 @@ static void act(struct pd_ui* ui, int id) {
         ui->learnPick = ui->learnPick == id - HIT_LEARN_ROW ? -1 : id - HIT_LEARN_ROW;
     } else if (id == HIT_BACK) {
         pd_ui_back(ui);
-    } else if (id == HIT_POCKET_PREV || id == HIT_POCKET_NEXT) {
-        int dir = id == HIT_POCKET_NEXT ? 1 : -1;
-        ui->bagPocket = (ui->bagPocket + PD_POCKET_COUNT + dir) % PD_POCKET_COUNT;
-        ui->bagSelected = -1;
-        ui->bagScroll = 0;
-    } else if (id >= HIT_BAG_ROW && id < HIT_BAG_ROW + PD_POCKET_SLOTS) {
-        ui->bagSelected = id - HIT_BAG_ROW;
+    } else if (ui_bag_act(ui, id)) {
     } else if (id >= HIT_SETTING && id <= HIT_SETTING + SETTING_LEAVE) {
         static const enum pd_overlay OPENS[] = {
             [SETTING_SCREEN] = PD_OVERLAY_PICK_SCREEN,
@@ -311,8 +305,8 @@ bool pd_ui_back(struct pd_ui* ui) {
         ui->summarySlot = -1;
         return true;
     }
-    if (ui->tab == PD_TAB_BAG && ui->bagSelected >= 0) {
-        ui->bagSelected = -1;
+    if (ui->tab == PD_TAB_BAG && ui->bagSelected > 0) {
+        ui->bagSelected = 0;
         return true;
     }
     if (ui->tab == PD_TAB_DEX && ui->dexOpen) {

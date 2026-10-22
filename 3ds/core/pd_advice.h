@@ -44,4 +44,19 @@ struct pd_learn_option {
 int pd_learn_options(const struct pd_game* g, const struct pd_snapshot* s, const struct pd_mon* m,
                      struct pd_learn_option* out, int max);
 
+// The bag's TM / HM item's move (TM01 = item 289 .. HM08 = 346, sTMHMMoves),
+// 0 = not one, or the table isn't known.
+int pd_tm_item_move(const struct pd_game* g, int item);
+
+// Who in the party can learn a TM / HM (MoveLearning.learners): one per party
+// slot, the advice for each who can. Returns the party's size, 0 = not a TM.
+enum pd_tm_fit { PD_TM_NOT_ABLE, PD_TM_ABLE, PD_TM_LEARNED };
+struct pd_tm_learner {
+    enum pd_tm_fit fit;
+    struct pd_advice advice; // ABLE only
+};
+int pd_tm_learners(const struct pd_game* g, const struct pd_snapshot* s, int item, struct pd_tm_learner* out);
+// The party slot it suits best: the biggest gain short of a SKIP, -1 = none.
+int pd_tm_best(const struct pd_tm_learner* l, int n);
+
 #endif
