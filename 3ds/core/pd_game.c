@@ -56,6 +56,7 @@ static const struct pd_config FIRERED_REV1 = {
     FIRERED_RAM,
     FIRERED_REV1_FOES,
     FIRERED_CARD,
+    .items = 0x083DB098,
     .monIconTable = 0x083D3810,
     .monIconPaletteIndices = 0x083D3EF0,
     .monIconPaletteTable = 0x083D40A8,
@@ -76,32 +77,68 @@ static const struct pd_config FIRERED_REV1 = {
     .probeName = "BROCK",
 };
 
-// FireRed rev 0 and LeafGreen: the tabs that read RAM (and the MAP, whose art
-// is found by fingerprint) and the party icons; their ROM tables for the
-// POKéDEX and the GUIDE's live pages aren't ported yet. The FOE TEAM's
-// addresses are known for rev 1 only (the app's NATIVE_FIRERED_REV0 has none).
+// FireRed rev 0: the tabs that read RAM (and the MAP, whose art is found by
+// fingerprint) and the party icons. The app has no POKéDEX / GUIDE tables or
+// FOE TEAM addresses for it either (NATIVE_FIRERED_REV0), nor a card.
 static const struct pd_config FIRERED_REV0_RAM_ONLY = {
     FIRERED_RAM,
+    .items = 0x083DB028,
     .monIconTable = 0x083D37A0,
     .monIconPaletteIndices = 0x083D3E80,
     .monIconPaletteTable = 0x083D4038,
 };
 
-static const struct pd_config LEAFGREEN_REV0_RAM_ONLY = {
+// LeafGreen (NATIVE_LEAFGREEN_REV0 / _REV1): FireRed's RAM for the same
+// revision, its own ROM tables - POKEDEX_LEAFGREEN_REV0/1 and
+// GUIDE_TABLES_LEAFGREEN_REV0/1 (BROCK is trainer 414 there too). The FOE
+// TEAM's addresses are rev 1's, like FireRed's.
+static const struct pd_config LEAFGREEN_REV0 = {
     FIRERED_RAM,
     FIRERED_CARD,
+    .items = 0x083DAE64,
     .monIconTable = 0x083D35DC,
     .monIconPaletteIndices = 0x083D3CBC,
     .monIconPaletteTable = 0x083D3E74,
+    .dexEntries = 0x0844E270,
+    .dexEntryStride = 0x24,
+    .speciesInfo = 0x08254760,
+    .speciesToNational = 0x08251FCA,
+    .abilityNames = 0x0824FC1C,
+    .frontPics = 0x08235088,
+    .palettes = 0x082372E8,
+    .regionalOrder = 0,
+    .regionalCount = 151,
+    .regionName = "KANTO",
+    .trainers = 0x0823EAA4,
+    .learnsets = 0x0825D794,
+    .wildHeaders = 0x083C9AF4,
+    .probeTrainer = 414,
+    .probeName = "BROCK",
 };
 
-static const struct pd_config LEAFGREEN_REV1_RAM_ONLY = {
+static const struct pd_config LEAFGREEN_REV1 = {
     FIRERED_RAM,
     FIRERED_REV1_FOES,
     FIRERED_CARD,
+    .items = 0x083DAED4,
     .monIconTable = 0x083D364C,
     .monIconPaletteIndices = 0x083D3D2C,
     .monIconPaletteTable = 0x083D3EE4,
+    .dexEntries = 0x0844E2E0,
+    .dexEntryStride = 0x24,
+    .speciesInfo = 0x082547D0,
+    .speciesToNational = 0x0825203A,
+    .abilityNames = 0x0824FC8C,
+    .frontPics = 0x082350F8,
+    .palettes = 0x08237358,
+    .regionalOrder = 0,
+    .regionalCount = 151,
+    .regionName = "KANTO",
+    .trainers = 0x0823EB14,
+    .learnsets = 0x0825D804,
+    .wildHeaders = 0x083C9B64,
+    .probeTrainer = 414,
+    .probeName = "BROCK",
 };
 
 // NATIVE_EMERALD_RETAIL (English, BPEE; sha1 f3ae0881..., what pret's
@@ -128,6 +165,7 @@ static const struct pd_config EMERALD = {
     .monIconPaletteTable = 0x0857C540,
     // Emerald's item.c: Items, Poke Balls, TMs & HMs, Berries, Key Items.
     .bagPockets = 0x02039DD8,
+    .items = 0x085839A0,
     .bagOrder = { PD_POCKET_ITEMS, PD_POCKET_BALLS, PD_POCKET_TMHM, PD_POCKET_BERRIES, PD_POCKET_KEY },
     .dexEntries = 0x0856B5B0,
     .dexEntryStride = 0x20,
@@ -195,7 +233,7 @@ void pd_game_detect(struct pd_game* g, const uint8_t* header, size_t romSize) {
         g->title = g->code[2] == 'R' ? "Pokémon FireRed" : "Pokémon LeafGreen";
         bool rev1 = g->revision == 1;
         if (g->code[2] == 'R') g->cfg = rev1 ? &FIRERED_REV1 : &FIRERED_REV0_RAM_ONLY;
-        else g->cfg = rev1 ? &LEAFGREEN_REV1_RAM_ONLY : &LEAFGREEN_REV0_RAM_ONLY;
+        else g->cfg = rev1 ? &LEAFGREEN_REV1 : &LEAFGREEN_REV0;
     } else if (!strcmp(g->code, "BPEE")) {
         g->kind = PD_GAME_EMERALD;
         g->title = "Pokémon Emerald";

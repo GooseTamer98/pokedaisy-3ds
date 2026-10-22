@@ -390,9 +390,29 @@ const char* pd_item_name(const struct pd_game* g, int item) {
     return item_entry(pd_item_names_firered, pd_item_names_firered_count, item);
 }
 
+// The app's RomItemText: the game's own text, read from gItems in the player's
+// ROM (descriptions are the games' prose, so they aren't bundled). The record
+// must carry the item's own id (the table is checked against the ROM, like
+// matchesRom); the bag shows one description at a time, so one is kept.
 const char* pd_item_description(const struct pd_game* g, int item) {
-    if (g->kind == PD_GAME_EMERALD) return item_entry(pd_item_desc_emerald, pd_item_desc_emerald_count, item);
-    return item_entry(pd_item_desc_firered, pd_item_desc_firered_count, item);
+    static unsigned cachedRom;
+    static int cachedItem;
+    static char text[256];
+    if (item <= 0 || !g->cfg || !g->cfg->items) return "";
+    if (cachedRom == pd_rom_id(g) && cachedItem == item) return text;
+    text[0] = 0;
+    const uint8_t* rec = pd_rom_at(g, g->cfg->items + (uint32_t) item * 44, 44);
+    if (rec && (rec[0x0E] | rec[0x0F] << 8) == item) {
+        uint32_t ptr = rec[0x14] | rec[0x15] << 8 | rec[0x16] << 16 | (uint32_t) rec[0x17] << 24;
+        // The terminator is a few lines in; near the ROM's end, read what's there.
+        size_t len = 256;
+        const uint8_t* d = NULL;
+        while (len >= 16 && !(d = pd_rom_at(g, ptr, len))) len /= 2;
+        if (d) pd_gen3_text(d, len, text, sizeof(text));
+    }
+    cachedRom = pd_rom_id(g);
+    cachedItem = item;
+    return text;
 }
 
 const char* pd_pocket_name(int pocket) {

@@ -43,6 +43,10 @@ struct pd_config {
     // bagOrder[i] is the pocket (PD_POCKET_*) the game keeps at index i.
     uint32_t bagPockets;
     uint8_t bagOrder[5];
+    // gItems in the ROM (the app's vanillaItems: 44-byte struct Item, itemId
+    // +0x0E, description pointer +0x14) - the bag's descriptions are read from
+    // the player's ROM, never bundled. 0 = none.
+    uint32_t items;
 
     // POKéDEX (the app's PokedexTables): ROM tables ...
     uint32_t dexEntries;       // gPokedexEntries, by national number

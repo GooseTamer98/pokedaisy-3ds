@@ -68,11 +68,13 @@ unknown. Target the **New 3DS / New 3DS XL / New 2DS XL** first; the original
     trades, FireRed's stickers ...) the way the game does. FireRed rev 1,
     LeafGreen and Emerald, as in the app.
 - Games: retail English **FireRed / LeafGreen (rev 0 and 1)** and **Emerald**.
-  MAP, POKéDEX and GUIDE's wild / BOSS parts read ROM tables mapped for
-  FireRed rev 1 and Emerald only so far: on FireRed rev 0 and LeafGreen MAP
-  works, POKéDEX says it's not available yet, and GUIDE has its pages and
-  HERE's people / items. The FOE TEAM's addresses are known for FireRed /
-  LeafGreen rev 1 and Emerald (as in the app); the icons for all five. ROM hacks, other languages, Ruby / Sapphire and Game Boy
+  POKéDEX and GUIDE's wild / BOSS parts read ROM tables mapped for FireRed
+  rev 1, LeafGreen (rev 0 and 1) and Emerald, as in the app; on FireRed rev 0
+  (which the app has no tables for either) MAP works, POKéDEX says it's not
+  available yet, and GUIDE has its pages and HERE's people / items. The FOE
+  TEAM's addresses are known for FireRed / LeafGreen rev 1 and Emerald (as in
+  the app); the icons and the bag's item descriptions (read from the ROM's
+  gItems, never bundled) for all five. ROM hacks, other languages, Ruby / Sapphire and Game Boy
   aren't ported yet; they show "not
   supported".
 
@@ -210,8 +212,7 @@ not used; nor is render-to-texture.
 - Run it on a New 3DS: measure the frame time per screen mode, check the
   texture orientation, sound and save writes on hardware.
 - Port more of the app: the rest of `NativeConfig` (hacks, other languages,
-  Ruby / Sapphire, ROM tables for FireRed rev 0 / LeafGreen - the app has
-  LeafGreen's), the battle's touch controls (`BattleInputController`), the
+  Ruby / Sapphire), the battle's touch controls (`BattleInputController`), the
   party icons' two-frame animation.
 - More state slots with thumbnails, and resuming where the player left off (with
   the app's `pkStateMatchesSave` check first).
