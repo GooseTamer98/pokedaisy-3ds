@@ -55,6 +55,16 @@ enum {
     HIT_LEARN_LIST = 3290,
     HIT_LEARN_ROW = 3300,    // + LEARN option
     HIT_BAG_ROW = 4000,      // + row (ALL lists every pocket: up to 320)
+    HIT_ACT_USE = 3400,
+    HIT_ACT_GIVE = 3401,
+    HIT_ACT_TAKE = 3402,
+    HIT_ACT_PC = 3403,
+    HIT_ACT_FLY = 3404,
+    HIT_ACT_OK = 3405,
+    HIT_ACT_SLOT = 3410,     // + party slot
+    HIT_ACT_MOVE = 3420,     // + move slot
+    HIT_FLY_LIST = 3499,
+    HIT_FLY_TOWN = 3500,     // + town (PD_FLY_MAX)
 };
 
 enum setting_row {
@@ -107,6 +117,9 @@ bool ui_guide_act(struct pd_ui* ui, int id);
 bool ui_battle_act(struct pd_ui* ui, int id);
 bool ui_card_act(struct pd_ui* ui, int id);
 bool ui_bag_act(struct pd_ui* ui, int id);
+// The game actions' overlays and taps (pd_ui_act.c).
+void ui_act_overlay(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game* g, const struct pd_snapshot* s);
+bool ui_act_act(struct pd_ui* ui, int id);
 void ui_card_tab(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game* g, const struct pd_snapshot* s);
 bool ui_card_tick(struct pd_ui* ui, unsigned ms);
 

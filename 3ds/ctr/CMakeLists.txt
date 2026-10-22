@@ -47,8 +47,9 @@ add_subdirectory("${MGBA_DIR}" "${CMAKE_CURRENT_BINARY_DIR}/mgba" EXCLUDE_FROM_A
 
 file(GLOB CORE_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/../core/*.c")
 
-add_executable(pokedaisy.elf main.c gpu.c ${CORE_SOURCES})
+add_executable(pokedaisy.elf main.c gpu.c ../mgba/pd_mgba.c ${CORE_SOURCES})
 target_include_directories(pokedaisy.elf PRIVATE
+    "${CMAKE_CURRENT_SOURCE_DIR}/../core"
     "${MGBA_DIR}/include"
     "${MGBA_DIR}/src"
     "${CMAKE_CURRENT_BINARY_DIR}/mgba/include")

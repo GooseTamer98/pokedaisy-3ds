@@ -6,6 +6,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "pd_action.h"
 #include "pd_advice.h"
 #include "pd_icon.h"
 #include "pd_settings.h"
@@ -55,6 +56,8 @@ static const struct bag_palette EMERALD_BAG = {
 
 #define HEADER_H 24
 #define SORT_W 78
+#define PC_W 30
+#define ACT_W 44
 #define LIST_Y (CONTENT_Y + HEADER_H + 4)
 #define LIST_H 118
 #define LEARNERS_H 48
@@ -134,8 +137,10 @@ static int gather(struct pd_ui* ui, const struct pd_game* g, const struct pd_sna
     return n;
 }
 
-static void header(struct pd_ui* ui, struct pd_canvas* c, const struct bag_palette* p) {
-    int x = MARGIN, w = c->w - 2 * MARGIN - SORT_W - 4;
+static void header(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game* g, const struct bag_palette* p) {
+    // PC anywhere (the app's BAG bar PC): left of SORT where the ROM has it.
+    bool pc = pd_act_can_pc(g);
+    int x = MARGIN, w = c->w - 2 * MARGIN - SORT_W - 4 - (pc ? PC_W + 4 : 0);
     pd_layered_box(c, x, CONTENT_Y, w, HEADER_H, 3, p->panel, p->tabLayers, p->panel[p->tabLayers].color);
     const char* name = tab_name(ui->bagTab);
     int ty = pd_text_y(CONTENT_Y, HEADER_H);
@@ -148,8 +153,16 @@ static void header(struct pd_ui* ui, struct pd_canvas* c, const struct bag_palet
     pd_triangle(c, x + w - 16, ay, 6, PD_RIGHT, next);
     ui_add_hit(ui, x, CONTENT_Y, 48, HEADER_H, HIT_POCKET_PREV);
     ui_add_hit(ui, x + w - 48, CONTENT_Y, 48, HEADER_H, HIT_POCKET_NEXT);
-    // SORT: a tap steps DEFAULT / NAME / TYPE / COUNT, like the app's button.
     int sx = x + w + 4;
+    if (pc) {
+        bool down = ui->pressedId == HIT_ACT_PC;
+        pd_layered_box(c, sx, CONTENT_Y, PC_W, HEADER_H, 3, p->panel, p->tabLayers,
+                       down ? p->cursor : p->panel[p->tabLayers].color);
+        pd_text(c, sx + (PC_W - pd_text_width("PC")) / 2, ty, "PC", p->tabText, p->tabTextShadow);
+        ui_add_hit(ui, sx, CONTENT_Y, PC_W, HEADER_H, HIT_ACT_PC);
+        sx += PC_W + 4;
+    }
+    // SORT: a tap steps DEFAULT / NAME / TYPE / COUNT, like the app's button.
     bool pressed = ui->pressedId == HIT_BAG_SORT;
     pd_layered_box(c, sx, CONTENT_Y, SORT_W, HEADER_H, 3, p->panel, p->tabLayers,
                    pressed ? p->cursor : p->panel[p->tabLayers].color);
@@ -159,8 +172,8 @@ static void header(struct pd_ui* ui, struct pd_canvas* c, const struct bag_palet
     ui_add_hit(ui, sx, CONTENT_Y, SORT_W, HEADER_H, HIT_BAG_SORT);
 }
 
-static void list(struct pd_ui* ui, struct pd_canvas* c, const struct bag_palette* p, const struct row* rows, int n,
-                 int listH) {
+static void list(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game* g, const struct bag_palette* p,
+                 const struct row* rows, int n, int listH) {
     int x = MARGIN, w = c->w - 2 * MARGIN;
     int f = pd_layered_box(c, x, LIST_Y, w, listH, 3, p->panel, p->panelLayers, p->fill);
     int ix = x + f, iy = LIST_Y + f + 1, iw = w - 2 * f, ih = listH - 2 * f - 2;
@@ -190,11 +203,15 @@ static void list(struct pd_ui* ui, struct pd_canvas* c, const struct bag_palette
         int ty = pd_text_y(ry, BAG_ROW);
         int nw = pd_text_fit(c, ix + 14, ty, iw - 78, r->name, p->text, p->textShadow);
         if (r->favorite) ui_star(c, ix + 14 + nw + 4, ry + 4, UI_FAVORITE);
+        int qx = ix + iw - 10;
         if (r->pocket != PD_POCKET_KEY && !(r->id >= FIRST_HM && r->id <= LAST_HM)) {
             char qty[12];
             snprintf(qty, sizeof(qty), "×%d", r->quantity);
-            pd_text_right(c, ix + iw - 10, ty, qty, p->text, p->textShadow);
+            pd_text_right(c, qx, ty, qty, p->text, p->textShadow);
+            qx -= pd_text_width(qty);
         }
+        // The app's mark: something to do with it here (USE or GIVE).
+        if (pd_act_can_use(g, r->id) || pd_act_can_give(g, r->id)) ui_ball(c, qx - 14, ry + 4, true);
         if (p->divider) pd_fill(c, ix + 4, ry + BAG_ROW - 1, iw - 8, 1, p->divider);
         // Rows cut off at the window's edge still take a tap on what shows.
         int top = ry < iy ? iy : ry;
@@ -238,6 +255,14 @@ static void description(struct pd_ui* ui, struct pd_canvas* c, const struct pd_g
     }
     int tx = x + f + 6;
     if (pd_draw_item_icon(c, g, sel->id, x + f + 4, y + f + 4)) tx = x + f + 4 + PD_ITEM_ICON + 6;
+    // USE / GIVE under the star, where the ROM can do them (FieldItems.kt).
+    bool use = pd_act_can_use(g, sel->id), give = pd_act_can_give(g, sel->id);
+    int bx = x + w - f - ACT_W - 2, by = y + f + 17;
+    if (use) {
+        ui_button(ui, c, bx, by, ACT_W, 16, "USE", HIT_ACT_USE);
+        by += 17;
+    }
+    if (give) ui_button(ui, c, bx, by, ACT_W, 16, "GIVE", HIT_ACT_GIVE);
     // The star: a tap stars it for this game.
     int sx = x + w - f - 22;
     bool pressed = ui->pressedId == HIT_BAG_STAR;
@@ -257,7 +282,8 @@ static void description(struct pd_ui* ui, struct pd_canvas* c, const struct pd_g
     }
     const char* text = pd_item_description(g, sel->id);
     if (!*text) text = sel->name;
-    pd_text_wrap(c, tx, y + f + 1, sx - tx - 2, 16, lines, text, p->descText, p->descTextShadow);
+    int right = use || give ? bx - 4 : sx - 2;
+    pd_text_wrap(c, tx, y + f + 1, right - tx, 16, lines, text, p->descText, p->descTextShadow);
     if (*bestLine) {
         pd_text_fit(c, tx, y + f + 1 + lines * 16, x + w - f - 4 - tx, bestLine, p->descText, p->descTextShadow);
     }
@@ -303,8 +329,8 @@ void ui_bag_tab(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game* g, 
     int ln = sel ? pd_tm_learners(g, s, sel->id, l) : 0;
     int best = ln ? pd_tm_best(l, ln) : -1;
     int listH = ln ? LIST_H - LEARNERS_H - 4 : LIST_H;
-    header(ui, c, p);
-    list(ui, c, p, rows, n, listH);
+    header(ui, c, g, p);
+    list(ui, c, g, p, rows, n, listH);
     if (ln) learners(c, g, s, p, l, ln, best, LIST_Y + listH + 4);
     description(ui, c, g, s, p, sel, l, best, LIST_Y + LIST_H + 4);
 }

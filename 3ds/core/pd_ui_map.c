@@ -8,6 +8,8 @@
 #include <strings.h>
 
 #include "pd_map.h"
+#include "pd_action.h"
+#include "pd_tables.h"
 #include "pd_ui_internal.h"
 
 #define FRAME 5
@@ -162,6 +164,9 @@ static void label(struct pd_canvas* c, const struct pd_game* g, const char* name
     }
 }
 
+#define FIELD_MOVE 0x3152CD
+#define FIELD_MOVE_SHADOW 0xA4C5F6
+
 static void side_button(struct pd_ui* ui, struct pd_canvas* c, int row, const char* text, int id) {
     ui_button(ui, c, SIDE_X, CONTENT_Y + row * 28, SIDE_W, 24, text, id);
 }
@@ -217,6 +222,19 @@ void ui_map_tab(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game* g, 
         side_button(ui, c, row++, "ME", HIT_MAP_ME);
     }
     side_button(ui, c, row++, "PLACES", HIT_MAP_PLACES);
+    // FLY (Fly.kt), under PLACES in the party menu's field-move blue: where the
+    // ROM's code is found and someone in the party knows it.
+    bool flyer = false;
+    for (int i = 0; i < s->partyCount && !flyer; i++) {
+        for (int m = 0; m < PD_NUM_MOVES; m++) flyer |= s->party[i].species != PD_SPECIES_EGG && s->party[i].moves[m] == 19;
+    }
+    if (flyer && pd_act_can_fly(g)) {
+        int fy = CONTENT_Y + row * 28;
+        pd_title_box(c, SIDE_X, fy, SIDE_W, 24, ui->pressedId == HIT_ACT_FLY ? PD_LIST_FILL : PD_TITLE_FILL);
+        pd_text(c, SIDE_X + (SIDE_W - pd_text_width("FLY")) / 2, pd_text_y(fy, 24), "FLY", FIELD_MOVE, FIELD_MOVE_SHADOW);
+        ui_add_hit(ui, SIDE_X, fy, SIDE_W, 24, HIT_ACT_FLY);
+        row++;
+    }
 
     // Below: where the player is.
     int by = CONTENT_Y + PD_MAP_H + 2 * FRAME + 4, bh = c->h - by - MARGIN;

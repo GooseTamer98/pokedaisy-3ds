@@ -13,6 +13,7 @@
 
 #include <stdbool.h>
 
+#include "pd_action.h"
 #include "pd_canvas.h"
 #include "pd_game.h"
 #include "pd_snapshot.h"
@@ -105,6 +106,10 @@ enum pd_overlay {
     PD_OVERLAY_CONFIRM_LEAVE,
     PD_OVERLAY_PLACES,       // the MAP's list of places
     PD_OVERLAY_GUIDE_NOTICE, // the GUIDE's "AI-written, may be wrong" notice
+    PD_OVERLAY_ACT_PARTY,    // USE / GIVE: which Pokémon
+    PD_OVERLAY_ACT_MOVE,     // a PP item: which move
+    PD_OVERLAY_ACT_NOTICE,   // what an action did
+    PD_OVERLAY_FLY,          // FLY's towns
 };
 
 struct pd_ui {
@@ -133,6 +138,13 @@ struct pd_ui {
     uint16_t bagRowItem[PD_POCKET_COUNT * PD_POCKET_SLOTS];
     int bagRows;
     const struct pd_game* game; // the game last drawn (the BAG's stars are per game)
+    const struct pd_snapshot* snap; // and the read it was drawn from
+    // The game actions (pd_action.h): the request / answer the host runs, the
+    // party pick's mode (USE or GIVE), the notice shown, FLY's list scroll.
+    struct pd_act act;
+    bool actGive;
+    char actNotice[160];
+    int flyScroll;
 
     // POKéDEX: the list's scroll, the open entry (national number, 0 = the
     // list), and which dex shows (-1 = the save's own: National once it has
@@ -184,5 +196,9 @@ enum pd_action pd_ui_take_action(struct pd_ui* ui);
 bool pd_ui_tick(struct pd_ui* ui, unsigned ms);
 
 const char* pd_screen_mode_name(int mode);
+
+// The host, when pd_act_step answered (true): opens the party pick, the move
+// pick, FLY's list or a notice, by what came back.
+void pd_ui_act_done(struct pd_ui* ui, const struct pd_game* g, const struct pd_snapshot* s);
 
 #endif

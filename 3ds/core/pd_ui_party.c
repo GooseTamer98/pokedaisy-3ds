@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "pd_action.h"
 #include "pd_advice.h"
 #include "pd_icon.h"
 #include "pd_tables.h"
@@ -124,7 +125,8 @@ static int name_line(struct pd_canvas* c, int ix, int iw, int ty, const struct p
 
 // HP, EXP (progress through this level, the text what's left to the next),
 // the types and the held item, beside / under the icon.
-static int info_block(struct pd_canvas* c, const struct pd_game* g, int ix0, int iw0, int ty, const struct pd_mon* m) {
+static int info_block(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game* g, int ix0, int iw0, int ty,
+                      const struct pd_mon* m) {
     char buf[40];
     int ix = ix0 + PD_ICON + 4, iw = iw0 - PD_ICON - 4;
     bool fainted = m->hp == 0;
@@ -159,7 +161,12 @@ static int info_block(struct pd_canvas* c, const struct pd_game* g, int ix0, int
     if (m->heldItem) {
         int lx = ix0 + iw0 / 2;
         int lw = pd_text(c, lx, ty, "ITEM", PD_VALUE, PD_VALUE_SHADOW);
-        pd_text_fit(c, lx + lw + 6, ty, ix0 + iw0 - lx - lw - 6, pd_item_name(g, m->heldItem), PD_LABEL, PD_LABEL_SHADOW);
+        // TAKE (the summary's, FieldItems.kt's takeFromMon) where the ROM has it.
+        bool take = pd_act_can_take(g);
+        int reserve = take ? 48 : 0;
+        pd_text_fit(c, lx + lw + 6, ty, ix0 + iw0 - lx - lw - 6 - reserve, pd_item_name(g, m->heldItem), PD_LABEL,
+                    PD_LABEL_SHADOW);
+        if (take) ui_button(ui, c, ix0 + iw0 - 44, ty + 1, 44, 16, "TAKE", HIT_ACT_TAKE);
     }
     return ty + 20;
 }
@@ -366,7 +373,7 @@ static void summary(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game*
     }
     if (ui->summaryPage == PD_SUMMARY_MOVES) {
         ty = name_line(c, ix + PD_ICON + 4, iw - PD_ICON - 4, ty, m);
-        ty = info_block(c, g, ix, iw, ty, m);
+        ty = info_block(ui, c, g, ix, iw, ty, m);
         pd_fill(c, ix, ty, iw, 1, PD_DIVIDER);
         moves_page(c, ix, iw, ty + 4, m);
     } else {

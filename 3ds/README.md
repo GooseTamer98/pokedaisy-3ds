@@ -31,7 +31,8 @@ unknown. Target the **New 3DS / New 3DS XL / New 2DS XL** first; the original
 - The companion, in the app's FireRed OPTION-screen look:
   - **PARTY**: the six slots (the game's own icon from your ROM, name with its
     ♂ / ♀, level, HP bar, status) in the app's FireRed party palette; tap one
-    for its summary (moves, type, PP).
+    for its summary (moves, type, PP); **TAKE** there puts its held item back
+    in the bag (same games as BAG's USE).
   - **BATTLE**: opens by itself in a battle and goes back after it. **INFO**:
     the foe and you (with the game's own party icons, read from your ROM),
     your moves with the app's verdicts (SUPER 2x / NEUTRAL 1x / RESISTED 1/2x /
@@ -48,12 +49,20 @@ unknown. Target the **New 3DS / New 3DS XL / New 2DS XL** first; the original
     with their move), a list a drag scrolls, the tapped item's icon and
     description (both from your ROM) with a star that keeps it on top for that
     game (saved in the settings file), and for a TM who in the party can learn
-    it (ABLE / NO / LEARNED, BEST from the app's move advice).
+    it (ABLE / NO / LEARNED, BEST from the app's move advice). On retail
+    English FireRed rev 1, LeafGreen and Emerald, **USE** (a Repel at once;
+    medicine and PP items on a Pokémon you pick, with the game's own "no
+    effect" check per Pokémon and per move), **GIVE** and the **PC** (the
+    game's own storage system, anywhere) work like the app's: the game's own
+    functions, called between frames, only on the free field. A ball marks the
+    items you can use or give.
   - **MAP**: the game's own region map, rebuilt from your ROM (the app's
     `RomArt`: found by fingerprint, nothing bundled) - Kanto and the Sevii
     pages, or Hoenn - with the player's head where the game puts it, the place
     name in the game's own label, and FireRed's blinking cursor on a tapped
-    tile. PLACES lists every town, route and place to jump to.
+    tile. PLACES lists every town, route and place to jump to. **FLY** (where
+    someone in the party knows it, same games as USE): the towns you've been
+    to, and the game plays its own flight there.
   - **GUIDE**: the app's hand-written pages (TIPS / WHERE IS / STUCK?, with the
     save's progress checked off), hint first, then the answer. HERE is the
     current area: its to-dos, wild POKéMON (from the ROM, with odds), gifts,
@@ -135,6 +144,7 @@ Everything runs in Docker, so it works the same on a Mac or a cloud session.
 cd 3ds
 make decomps       # pret's FireRed rev 1 / Emerald, = retail (below; optional)
 make preview       # the companion from the RAM fixtures -> build/shots/*.png
+make act-test      # USE / GIVE / TAKE / PC / FLY on the decomp ROMs (host mGBA, cmake)
 make 3ds           # ctr/pokedaisy.3dsx (devkitpro/devkitarm image)
 make fixture-roms  # build/fixture-*.gba test ROMs (below)
 make azahar-test   # the .3dsx in the Azahar 3DS emulator -> build/azahar/*.png
@@ -160,6 +170,14 @@ make tables        # regenerate core/*_gen.c and ctr/icon.png from the app
   `build/fixtures/emerald_trainer` for `make fixture-roms`. No emulator: look at
   every UI change here. `PD_PREVIEW_HITS=1` also prints each shot's tap
   targets, for writing the Azahar steps.
+- **`make act-test`** runs the game actions for real, on the host: each decomp
+  ROM (FireRed rev 1, LeafGreen rev 0 / 1, Emerald) booted in a libmgba built
+  from the submodule, a fixture's RAM loaded over the running game, then a
+  Potion's party pick and use, TAKE and GIVE, a Repel, FLY (landing in the
+  town) and the PC (reaching the storage screen) through `core/pd_action.c`
+  and `mgba/pd_mgba.c` - the same code the 3DS runs - each checked in RAM. The
+  preview only draws those screens, with the game's answers filled in by hand
+  (`-act-*` shots).
 - **`make decomps`** (`test/build_decomps.sh`; git, a C compiler, libpng and
   devkitARM) builds pret's pokefirered (rev 1) and pokeemerald at pinned
   commits into `build/decomps/` and checks they match the retail SHA1s. The

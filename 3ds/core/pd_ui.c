@@ -125,6 +125,7 @@ void pd_ui_draw(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game* g,
                 const struct pd_snapshot* s, const struct pd_host_info* host) {
     ui->hitCount = 0;
     ui->game = g;
+    ui->snap = s;
     pd_backdrop(c);
     tab_bar(ui, c, host);
     if (ui->tab == PD_TAB_SETTINGS) {
@@ -146,7 +147,9 @@ void pd_ui_draw(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game* g,
     } else {
         ui_battle_tab(ui, c, g, s);
     }
-    if (ui->overlay == PD_OVERLAY_PLACES) {
+    if (ui->overlay >= PD_OVERLAY_ACT_PARTY && ui->overlay <= PD_OVERLAY_FLY) {
+        ui_act_overlay(ui, c, g, s);
+    } else if (ui->overlay == PD_OVERLAY_PLACES) {
         ui_places_overlay(ui, c, g);
     } else if (ui->overlay == PD_OVERLAY_GUIDE_NOTICE) {
         ui_guide_notice(ui, c, g);
@@ -158,6 +161,7 @@ void pd_ui_draw(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game* g,
 // The list a drag scrolls right now.
 static int* scroll_target(struct pd_ui* ui) {
     if (ui->overlay == PD_OVERLAY_PLACES) return &ui->placesScroll;
+    if (ui->overlay == PD_OVERLAY_FLY) return &ui->flyScroll;
     switch (ui->tab) {
     case PD_TAB_BAG: return &ui->bagScroll;
     case PD_TAB_DEX: return ui->dexOpen ? &ui->dexSectionScroll : &ui->dexScroll;
@@ -183,7 +187,7 @@ static void close_overlay(struct pd_ui* ui, enum pd_action action) {
 }
 
 static void act(struct pd_ui* ui, int id) {
-    if (ui_map_act(ui, id) || ui_dex_act(ui, id) || ui_guide_act(ui, id) || ui_battle_act(ui, id) || ui_card_act(ui, id)) {
+    if (ui_act_act(ui, id) || ui_map_act(ui, id) || ui_dex_act(ui, id) || ui_guide_act(ui, id) || ui_battle_act(ui, id) || ui_card_act(ui, id)) {
         return;
     }
     if (ui->overlay != PD_OVERLAY_NONE) {

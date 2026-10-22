@@ -11,11 +11,13 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "../core/pd_action.h"
 #include "../core/pd_canvas.h"
 #include "../core/pd_card.h"
 #include "../core/pd_romart.h"
 #include "../core/pd_game.h"
 #include "../core/pd_snapshot.h"
+#include "../core/pd_tables.h"
 #include "../core/pd_ui.h"
 #include "../core/pd_ui_internal.h"
 #include "pd_png.h"
@@ -297,6 +299,66 @@ int main(int argc, char** argv) {
         tap(&p, HIT_BAG_ROW, 0);
         shot(out, name, "bag-tm", px);
     }
+    // The game actions' screens, with the game's answers filled in by hand
+    // (no emulator here: make act-test runs the real calls): USE's party
+    // pick, its notice, a PP item's move pick, GIVE's pick, FLY's towns.
+    if (snap.partyCount > 0 && pd_act_supported(&game)) {
+        struct pd_act* a = &ui.act;
+        memset(a, 0, sizeof(*a));
+        a->item = 13;
+        a->targetCount = snap.partyCount;
+        for (int i = 0; i < snap.partyCount; i++) {
+            a->targets[i].personality = snap.party[i].personality;
+            a->targets[i].heldItem = snap.party[i].heldItem;
+            a->targets[i].verdict = i == 0 ? PD_SLOT_OK : snap.party[i].species == PD_SPECIES_EGG ? PD_SLOT_EGG : PD_SLOT_NO_EFFECT;
+        }
+        a->done = PD_REQ_USE;
+        a->result = PD_ACT_USED;
+        pd_ui_act_done(&ui, &game, &snap);
+        draw(&p);
+        shot(out, name, "act-party", px);
+        tap(&p, HIT_ACT_SLOT, 0);
+        printf("act: request %d slot %d\n", a->kind, a->slot);
+        a->kind = PD_REQ_NONE;
+        a->done = PD_REQ_USE_ON;
+        a->result = PD_ACT_USED;
+        pd_ui_act_done(&ui, &game, &snap);
+        draw(&p);
+        shot(out, name, "act-notice", px);
+        tap(&p, HIT_ACT_OK, 0);
+        a->item = 34; // ETHER
+        a->targets[0].moves[0] = a->targets[0].moves[2] = true;
+        a->done = PD_REQ_USE;
+        a->result = PD_ACT_USED;
+        pd_ui_act_done(&ui, &game, &snap);
+        draw(&p);
+        tap(&p, HIT_ACT_SLOT, 0);
+        shot(out, name, "act-move", px);
+        tap(&p, HIT_NO, 0);
+        a->kind = PD_REQ_NONE;
+        a->item = 13;
+        for (int i = 0; i < snap.partyCount; i++) {
+            a->targets[i].verdict = snap.party[i].species == PD_SPECIES_EGG ? PD_SLOT_EGG : PD_SLOT_OK;
+        }
+        ui.actGive = true;
+        a->done = PD_REQ_GIVE_TARGETS;
+        pd_ui_act_done(&ui, &game, &snap);
+        draw(&p);
+        shot(out, name, "act-give", px);
+        tap(&p, HIT_NO, 0);
+        a->kind = PD_REQ_NONE;
+        a->flyCount = 0;
+        for (int m = game.kind == PD_GAME_EMERALD ? 0 : 88; a->flyCount < 12; m++) a->fly[a->flyCount++] = (uint16_t) m;
+        a->done = PD_REQ_FLY_TARGETS;
+        pd_ui_act_done(&ui, &game, &snap);
+        draw(&p);
+        shot(out, name, "act-fly", px);
+        tap(&p, HIT_FLY_TOWN + 2, 0);
+        printf("act: request %d mapsec %d\n", a->kind, a->mapsec);
+        memset(a, 0, sizeof(*a));
+        ui.overlay = PD_OVERLAY_NONE;
+    }
+
     // The star again: unstarred, FAVORITES goes (the settings file stays clean).
     tap(&p, HIT_POCKET_PREV, 0);
     ui.bagTab = PD_BAG_ALL;

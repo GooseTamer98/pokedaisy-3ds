@@ -31,6 +31,7 @@
 #include "../core/pd_settings.h"
 #include "../core/pd_snapshot.h"
 #include "../core/pd_ui.h"
+#include "../mgba/pd_mgba.h"
 #include "gpu.h"
 
 #define BASE_DIR "/pokedaisy"
@@ -397,6 +398,11 @@ static bool run_game(const char* file) {
 
     struct pd_ui ui;
     pd_ui_init(&ui, &settings);
+    // The companion's game actions (USE, GIVE, TAKE, PC, FLY) call the game's
+    // own functions between frames (pd_mgba.c).
+    struct pd_game_io io;
+    pd_mgba_io(&io, core);
+    pd_mgba_reset();
     // What the companion shows: read once now (RAM still blank: an empty
     // party), then every SNAPSHOT_EVERY frames.
     struct pd_snapshot snap, shown;
@@ -455,6 +461,7 @@ static bool run_game(const char* file) {
         case PD_ACTION_LOAD_STATE:
             backup_save(base, saveSd);
             load_state(core, statePath);
+            pd_mgba_reset();
             break;
         case PD_ACTION_LEAVE_GAME:
             leave = true;
@@ -479,7 +486,18 @@ static bool run_game(const char* file) {
         for (int i = 0; i < frames; i++) {
             core->setKeys(core, keys);
             core->runFrame(core);
+            pd_mgba_frame_done(core);
             frame++;
+        }
+
+        // A request from the companion, run now that the frame is done; its
+        // answer (and what it changed) shows at once.
+        if (pd_act_step(&ui.act, &game, &io, shown.inBattle) && mem.ewram && mem.iwram) {
+            pd_snapshot_read(&snap, &game, bus_read, &mem);
+            snap.frame = 0;
+            shown = snap;
+            pd_ui_act_done(&ui, &game, &shown);
+            redraw = true;
         }
 
         if (frame / SNAPSHOT_EVERY != (frame - frames) / SNAPSHOT_EVERY && mem.ewram && mem.iwram) {
