@@ -82,15 +82,29 @@ uint16_t* gpu_game_buffer(void) {
     return gameBuf;
 }
 
-// A 0xRRGGBB canvas into an RGB565 texture.
+// Where texel i of an 8x8 tile sits in it (Morton order): y * 8 + x.
+static uint8_t tileOrder[64];
+
+// A 0xRRGGBB canvas into an RGB565 texture, tile by tile: the texels are
+// written in memory order (no address worked out per pixel), the canvas read
+// from the tile's own 8 rows.
 static void write_canvas(C3D_Tex* tex, const uint32_t* px, int w, int h) {
+    if (!tileOrder[63]) {
+        for (u32 y = 0; y < 8; y++) {
+            for (u32 x = 0; x < 8; x++) tileOrder[tiled(x, y, 8)] = (uint8_t) (y * 8 + x);
+        }
+    }
     uint16_t* t = tex->data;
-    for (int y = 0; y < h; y++) {
-        const uint32_t* row = px + y * w;
-        for (int x = 0; x < w; x++) {
-            uint32_t p = row[x];
-            t[tiled((u32) x, (u32) y, tex->width)] =
-                (uint16_t) (((p >> 19) & 0x1F) << 11 | ((p >> 10) & 0x3F) << 5 | ((p >> 3) & 0x1F));
+    int tilesAcross = tex->width / 8;
+    for (int ty = 0; ty < h / 8; ty++) {
+        for (int tx = 0; tx < w / 8; tx++) {
+            uint16_t* out = t + (ty * tilesAcross + tx) * 64;
+            const uint32_t* in = px + ty * 8 * w + tx * 8;
+            for (int i = 0; i < 64; i++) {
+                int o = tileOrder[i];
+                uint32_t p = in[(o >> 3) * w + (o & 7)];
+                out[i] = (uint16_t) (((p >> 19) & 0x1F) << 11 | ((p >> 10) & 0x3F) << 5 | ((p >> 3) & 0x1F));
+            }
         }
     }
     GSPGPU_FlushDataCache(tex->data, tex->size);

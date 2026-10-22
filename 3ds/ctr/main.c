@@ -412,11 +412,17 @@ static bool run_game(const char* file) {
     struct pd_snapshot snap, shown;
     pd_snapshot_read(&shown, &game, bus_read, &mem);
     shown.frame = 0;
-    struct pd_host_info host = { .count = 2 };
+    struct pd_host_info host = { .count = 3 };
     host.labels[0] = "FILE";
     snprintf(host.values[0], sizeof(host.values[0]), "%s", file);
     host.labels[1] = "SPEED";
     snprintf(host.values[1], sizeof(host.values[1]), "-");
+    // FRAMES: loops that missed the screen's refresh (a game frame shown
+    // twice) and the companion's slowest redraw, over the last second.
+    host.labels[2] = "FRAMES";
+    snprintf(host.values[2], sizeof(host.values[2]), "-");
+    unsigned late = 0, worstDrawMs = 0;
+    u64 lastLoop = svcGetSystemTick();
     host.hasState = state_info(stateSd, host.stateWhen, sizeof(host.stateWhen));
     struct pd_canvas bottom;
     pd_canvas_init(&bottom, PD_UI_WIDTH, PD_UI_HEIGHT, bottomPx);
@@ -431,6 +437,10 @@ static bool run_game(const char* file) {
     bool appRunning = true;
 
     while ((appRunning = aptMainLoop())) {
+        u64 loopStart = svcGetSystemTick();
+        // Over 1.5 refreshes since the last loop: a refresh went by without a new frame.
+        if (loopStart - lastLoop > SYSCLOCK_ARM11 / 40) late++;
+        lastLoop = loopStart;
         hidScanInput();
         u32 held = hidKeysHeld(), down = hidKeysDown();
 
@@ -512,12 +522,11 @@ static bool run_game(const char* file) {
         if (frame / SNAPSHOT_EVERY != (frame - frames) / SNAPSHOT_EVERY && mem.ewram && mem.iwram) {
             pd_snapshot_read(&snap, &game, bus_read, &mem);
             pd_ui_update(&ui, &snap);
-            // Only a change the companion shows is worth a redraw (not the frame counter).
+            // Only a change the open tab shows is worth a redraw: the newest
+            // read is always kept, for the next one.
             snap.frame = 0;
-            if (memcmp(&snap, &shown, sizeof(snap))) {
-                shown = snap;
-                redraw = true;
-            }
+            if (pd_ui_view_changed(&ui, &shown, &snap)) redraw = true;
+            shown = snap;
         }
 
         fpsFrames += (unsigned) frames;
@@ -528,14 +537,20 @@ static bool run_game(const char* file) {
             // Against the GBA's own 268111856 / 4481136 = 59.73 frames a second.
             unsigned pct = (unsigned) ((u64) fpsFrames * 1000 * 100 * 4481136 / ((now - fpsStart) * 268111856ULL));
             snprintf(host.values[1], sizeof(host.values[1]), "%u%% (%u FPS)", pct, fpsFrames);
+            snprintf(host.values[2], sizeof(host.values[2]), "%u late, draw %u ms", late, worstDrawMs);
+            late = 0;
+            worstDrawMs = 0;
             fpsFrames = 0;
             fpsStart = now;
             if (ui.tab == PD_TAB_SETTINGS) redraw = true;
         }
 
         if (redraw) {
+            u64 t = svcGetSystemTick();
             pd_ui_draw(&ui, &bottom, &game, &shown, &host);
             gpu_set_bottom(bottomPx);
+            unsigned ms = (unsigned) ((svcGetSystemTick() - t) * 1000 / SYSCLOCK_ARM11);
+            if (ms > worstDrawMs) worstDrawMs = ms;
             redraw = false;
         }
         gpu_draw(true, settings.screenMode);

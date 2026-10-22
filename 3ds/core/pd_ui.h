@@ -78,7 +78,7 @@ enum pd_action {
 };
 
 // What the host tells the companion about itself.
-#define PD_UI_HOST_LINES 2
+#define PD_UI_HOST_LINES 3
 struct pd_host_info {
     const char* labels[PD_UI_HOST_LINES]; // extra SETTINGS info rows (FILE, SPEED ...)
     char values[PD_UI_HOST_LINES][40];
@@ -188,6 +188,11 @@ struct pd_ui {
 void pd_ui_init(struct pd_ui* ui, struct pd_settings* settings);
 // Follows the game: a battle opens BATTLE, its end goes back.
 void pd_ui_update(struct pd_ui* ui, const struct pd_snapshot* s);
+// Whether going from read a to read b changes what the open tab shows: the
+// host redraws only then. A walk changes the position, the step counters and
+// the play time every few frames; redrawing the whole screen for each was the
+// stutter on hardware (the draw shares the emulation's core and frame).
+bool pd_ui_view_changed(const struct pd_ui* ui, const struct pd_snapshot* a, const struct pd_snapshot* b);
 void pd_ui_draw(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game* g,
                 const struct pd_snapshot* s, const struct pd_host_info* host);
 // Stylus: down / held / up at (x, y). Returns true if the screen needs a redraw.

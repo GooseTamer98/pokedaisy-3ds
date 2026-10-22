@@ -50,6 +50,35 @@ void pd_ui_init(struct pd_ui* ui, struct pd_settings* settings) {
     ui->settings = settings;
 }
 
+#define SAME(field) (!memcmp(&a->field, &b->field, sizeof(a->field)))
+
+bool pd_ui_view_changed(const struct pd_ui* ui, const struct pd_snapshot* a, const struct pd_snapshot* b) {
+    // What every tab (or the switch to BATTLE) depends on.
+    if (!SAME(valid) || !SAME(inBattle) || !SAME(partyCount) || !SAME(party) || !SAME(battlers[0].species)) return true;
+    if (ui->overlay != PD_OVERLAY_NONE) return !SAME(bag) || !SAME(mapsec);
+    switch (ui->tab) {
+    case PD_TAB_PARTY: return !SAME(bag); // LEARN lists the bag's TMs
+    case PD_TAB_BAG: return !SAME(bagOk) || !SAME(bag);
+    case PD_TAB_MAP:
+        return !SAME(mapsec) || !SAME(posOk) || !SAME(x) || !SAME(y) || !SAME(mapGroup) || !SAME(mapNum) ||
+               !SAME(mapW) || !SAME(mapH) || !SAME(mapType) || !SAME(gender);
+    case PD_TAB_GUIDE:
+        return !SAME(mapsec) || !SAME(flagsOk) || !SAME(flags) || !SAME(vars) || !SAME(bag) || !SAME(dexOk) ||
+               !SAME(dexSeen) || !SAME(dexCaught);
+    case PD_TAB_DEX: return !SAME(dexOk) || !SAME(dexNational) || !SAME(dexSeen) || !SAME(dexCaught);
+    case PD_TAB_BATTLE:
+        return !SAME(isDouble) || !SAME(isTrainer) || !SAME(inputState) || !SAME(inputBattler) || !SAME(battlers) ||
+               !SAME(foeCount) || !SAME(foes) || !SAME(foeActive) || !SAME(foeNext);
+    case PD_TAB_SETTINGS: return !SAME(mapsec) || !SAME(money);
+    case PD_TAB_CARD:
+        return !SAME(cardOk) || !SAME(playerName) || !SAME(trainerId) || !SAME(playHours) || !SAME(playMinutes) ||
+               !SAME(money) || !SAME(flags) || !SAME(dexCaught) || !SAME(gameStats);
+    default: return true;
+    }
+}
+
+#undef SAME
+
 void pd_ui_update(struct pd_ui* ui, const struct pd_snapshot* s) {
     bool on = s->valid && s->inBattle && s->battlers[PD_POS_PLAYER_LEFT].species;
     if (on && !ui->battleWasOn) {
