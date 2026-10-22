@@ -37,6 +37,8 @@ enum {
     HIT_DEX_TOGGLE = 1900,
     HIT_DEX_PREV = 1901,
     HIT_DEX_NEXT = 1902,
+    HIT_DEX_SECTION = 1910, // + PD_DEX_*
+    HIT_DEX_SECTION_LIST = 1920,
     HIT_GUIDE_PAGE = 2000, // + page
     HIT_GUIDE_ROW = 2100,  // + entry
     HIT_GUIDE_LIST = 2900,

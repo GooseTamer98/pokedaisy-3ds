@@ -159,7 +159,7 @@ static int* scroll_target(struct pd_ui* ui) {
     if (ui->overlay == PD_OVERLAY_PLACES) return &ui->placesScroll;
     switch (ui->tab) {
     case PD_TAB_BAG: return &ui->bagScroll;
-    case PD_TAB_DEX: return &ui->dexScroll;
+    case PD_TAB_DEX: return ui->dexOpen ? &ui->dexSectionScroll : &ui->dexScroll;
     case PD_TAB_GUIDE: return &ui->guideScroll;
     default: return NULL;
     }

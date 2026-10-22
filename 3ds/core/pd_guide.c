@@ -210,6 +210,17 @@ static int cmp_wild(const void* a, const void* b) {
     return ((const struct pd_wild*) b)->pct - ((const struct pd_wild*) a)->pct;
 }
 
+// One wild header's tables, merged per species and method.
+static void read_header(const struct pd_game* g, const uint8_t* hd, struct pd_wild_set* out) {
+    memset(out, 0, sizeof(*out));
+    read_table(g, u32(hd + 4), 0, 12, LAND_ODDS, out, 0);
+    read_table(g, u32(hd + 8), 0, 5, WATER_ODDS, out, 1);
+    read_table(g, u32(hd + 12), 0, 5, WATER_ODDS, out, 2);
+    read_table(g, u32(hd + 16), 0, 2, FISH_ODDS, out, 3);
+    read_table(g, u32(hd + 16), 2, 3, FISH_ODDS + 2, out, 4);
+    read_table(g, u32(hd + 16), 5, 5, FISH_ODDS + 5, out, 5);
+}
+
 bool pd_wild_here(const struct pd_game* g, const struct pd_snapshot* s, struct pd_wild_set* out) {
     memset(out, 0, sizeof(*out));
     if (!s->posOk || !pd_guide_rom_ok(g)) return false;
@@ -217,18 +228,55 @@ bool pd_wild_here(const struct pd_game* g, const struct pd_snapshot* s, struct p
         const uint8_t* hd = pd_rom_at(g, g->cfg->wildHeaders + (uint32_t) h * WILD_HEADER, WILD_HEADER);
         if (!hd || hd[0] == 0xFF) return false;
         if (hd[0] != s->mapGroup || hd[1] != s->mapNum) continue;
-        read_table(g, u32(hd + 4), 0, 12, LAND_ODDS, out, 0);
-        read_table(g, u32(hd + 8), 0, 5, WATER_ODDS, out, 1);
-        read_table(g, u32(hd + 12), 0, 5, WATER_ODDS, out, 2);
-        read_table(g, u32(hd + 16), 0, 2, FISH_ODDS, out, 3);
-        read_table(g, u32(hd + 16), 2, 3, FISH_ODDS + 2, out, 4);
-        read_table(g, u32(hd + 16), 5, 5, FISH_ODDS + 5, out, 5);
+        read_header(g, hd, out);
         for (int m = 0; m < PD_WILD_METHODS; m++) {
             qsort(out->mons[m], (size_t) out->count[m], sizeof(struct pd_wild), cmp_wild);
         }
         return true;
     }
     return false;
+}
+
+// gMapGroups[group][num] -> its MapHeader's regionMapSectionId (+0x14), the
+// app's DexDetails.mapsec; -1 when the pointers don't lead to a header.
+static int mapsec_of(const struct pd_game* g, int group, int num) {
+    const uint8_t* list = g->cfg->mapGroups ? pd_rom_at(g, g->cfg->mapGroups + (uint32_t) group * 4, 4) : NULL;
+    const uint8_t* hp = list ? pd_rom_at(g, u32(list) + (uint32_t) num * 4, 4) : NULL;
+    const uint8_t* hdr = hp ? pd_rom_at(g, u32(hp), 0x18) : NULL;
+    if (!hdr || !pd_rom_at(g, u32(hdr), 4) || !pd_rom_at(g, u32(hdr + 4), 4)) return -1;
+    return hdr[0x14];
+}
+
+int pd_catch_spots(const struct pd_game* g, int species, struct pd_catch_spot* out, int max) {
+    int n = 0;
+    if (!pd_guide_rom_ok(g) || !g->cfg->mapGroups) return 0;
+    static struct pd_wild_set w;
+    for (int h = 0; h < MAX_HEADERS; h++) {
+        const uint8_t* hd = pd_rom_at(g, g->cfg->wildHeaders + (uint32_t) h * WILD_HEADER, WILD_HEADER);
+        if (!hd || hd[0] == 0xFF) break;
+        read_header(g, hd, &w);
+        int sec = -2;
+        for (int m = 0; m < PD_WILD_METHODS; m++) {
+            for (int i = 0; i < w.count[m]; i++) {
+                const struct pd_wild* x = &w.mons[m][i];
+                if (x->species != species) continue;
+                if (sec == -2) sec = mapsec_of(g, hd[0], hd[1]);
+                if (sec < 0) continue;
+                // Floors of one place (Mt. Moon 1F, B1F ...) count as one spot a method.
+                bool merged = false;
+                for (int k = 0; k < n && !merged; k++) {
+                    struct pd_catch_spot* o = &out[k];
+                    if (o->mapsec != sec || o->method != m) continue;
+                    if (x->minLv < o->minLv) o->minLv = x->minLv;
+                    if (x->maxLv > o->maxLv) o->maxLv = x->maxLv;
+                    if (x->pct > o->pct) o->pct = x->pct;
+                    merged = true;
+                }
+                if (!merged && n < max) out[n++] = (struct pd_catch_spot) { sec, m, x->minLv, x->maxLv, x->pct };
+            }
+        }
+    }
+    return n;
 }
 
 const char* pd_wild_method_name(int method) {

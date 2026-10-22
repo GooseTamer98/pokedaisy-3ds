@@ -317,6 +317,23 @@ int main(int argc, char** argv) {
         ui.dexOpen = 6;
         draw(&p);
         shot(out, name, "dex-entry", px);
+        drag(&p, HIT_DEX_SECTION_LIST, -200);
+        shot(out, name, "dex-entry-scrolled", px);
+        // The entry's sections; EVOLVE's family opens the first stage.
+        static const char* const SECTION_SHOTS[PD_DEX_SECTIONS] = { "", "dex-evolve", "dex-area", "dex-moves" };
+        for (int sec = 1; sec < PD_DEX_SECTIONS; sec++) {
+            tap(&p, HIT_DEX_SECTION + sec, 0);
+            shot(out, name, SECTION_SHOTS[sec], px);
+        }
+        drag(&p, HIT_DEX_SECTION_LIST, -200);
+        shot(out, name, "dex-moves-scrolled", px);
+        tap(&p, HIT_DEX_SECTION + PD_DEX_EVOLVE, 0);
+        int fam = first_hit(&p, HIT_DEX_ROW, HIT_DEX_ROW + PD_NATIONAL_COUNT + 1);
+        if (fam >= 0) {
+            tap(&p, fam, 0);
+            shot(out, name, "dex-evolve-opened", px);
+        }
+        tap(&p, HIT_DEX_SECTION + PD_DEX_INFO, 0);
         tap(&p, HIT_DEX_NEXT, 0);
         shot(out, name, "dex-next", px);
         tap(&p, HIT_BACK, 0);

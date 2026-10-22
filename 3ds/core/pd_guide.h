@@ -117,4 +117,11 @@ struct pd_wild_set {
 bool pd_wild_here(const struct pd_game* g, const struct pd_snapshot* s, struct pd_wild_set* out);
 const char* pd_wild_method_name(int method);
 
+// Every wild spot of species (the POKéDEX's AREA, the app's catchSpots): by
+// map section (gMapGroups), one per method, in the wild headers' order.
+struct pd_catch_spot {
+    int mapsec, method, minLv, maxLv, pct;
+};
+int pd_catch_spots(const struct pd_game* g, int species, struct pd_catch_spot* out, int max);
+
 #endif

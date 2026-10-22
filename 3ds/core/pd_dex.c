@@ -90,6 +90,10 @@ bool pd_dex_entry(const struct pd_game* g, int national, struct pd_dex_entry* ou
         for (int i = 0; i < 6; i++) out->stats[i] = b[ORDER[i]];
         out->type1 = b[6];
         out->type2 = b[7];
+        out->catchRate = b[8];
+        out->genderRatio = b[0x10];
+        out->eggGroup1 = b[0x14];
+        out->eggGroup2 = b[0x15];
         int a1 = b[0x16], a2 = b[0x17];
         const uint8_t* n1 = a1 ? pd_rom_at(g, cfg->abilityNames + (uint32_t) a1 * 13, 13) : NULL;
         const uint8_t* n2 = a2 && a2 != a1 ? pd_rom_at(g, cfg->abilityNames + (uint32_t) a2 * 13, 13) : NULL;
@@ -154,4 +158,46 @@ const char* pd_ability_name(const struct pd_game* g, int ability, char* buf, siz
         ? pd_rom_at(g, g->cfg->abilityNames + (uint32_t) ability * 13, 13) : NULL;
     if (n) pd_gen3_text(n, 13, buf, len);
     return buf;
+}
+
+int pd_level_moves(const struct pd_game* g, int species, struct pd_level_move* out, int max) {
+    // gLevelUpLearnsets[species] -> u16 level << 9 | move, ending 0xFFFF.
+    const uint8_t* p = g->cfg && g->cfg->learnsets && species > 0 && species < SPECIES_COUNT
+        ? pd_rom_at(g, g->cfg->learnsets + (uint32_t) species * 4, 4) : NULL;
+    if (!p) return 0;
+    uint32_t at = u32(p);
+    int n = 0;
+    for (; n < max; n++) {
+        const uint8_t* e = pd_rom_at(g, at + (uint32_t) n * 2, 2);
+        int v = e ? e[0] | e[1] << 8 : 0xFFFF;
+        if (v == 0xFFFF || v == 0) break;
+        out[n] = (struct pd_level_move) { v >> 9, v & 0x1FF };
+    }
+    return n;
+}
+
+#define TMHM_COUNT 58 // 50 TMs, 8 HMs
+
+int pd_tm_moves(const struct pd_game* g, int species, struct pd_tm_move* out, int max) {
+    const struct pd_config* cfg = g->cfg;
+    if (!cfg || !cfg->tmhmLearnsets || !cfg->tmhmMoves || species < 1 || species >= SPECIES_COUNT) return -1;
+    const uint8_t* bits = pd_rom_at(g, cfg->tmhmLearnsets + (uint32_t) species * 8, 8);
+    const uint8_t* moves = pd_rom_at(g, cfg->tmhmMoves, TMHM_COUNT * 2);
+    if (!bits || !moves) return -1;
+    int n = 0;
+    for (int i = 0; i < TMHM_COUNT && n < max; i++) {
+        if (!(bits[i / 8] >> (i % 8) & 1)) continue;
+        snprintf(out[n].label, sizeof(out[n].label), i < 50 ? "TM%02d" : "HM%02d", i < 50 ? i + 1 : i - 49);
+        out[n].move = moves[i * 2] | moves[i * 2 + 1] << 8;
+        n++;
+    }
+    return n;
+}
+
+const char* pd_egg_group_name(int group) {
+    static const char* const NAMES[16] = {
+        "", "MONSTER", "WATER 1", "BUG", "FLYING", "FIELD", "FAIRY", "GRASS", "HUMAN-LIKE",
+        "WATER 3", "MINERAL", "AMORPHOUS", "WATER 2", "DITTO", "DRAGON", "UNDISCOVERED",
+    };
+    return group > 0 && group < 16 ? NAMES[group] : "";
 }

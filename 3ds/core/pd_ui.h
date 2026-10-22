@@ -36,6 +36,8 @@ enum pd_tab {
 // The party summary's pages: the moves, IVs / EVs / nature (the app's STATS)
 // and the type matchups (its WEAK TO / RESISTS / IMMUNE TO).
 enum { PD_SUMMARY_MOVES, PD_SUMMARY_STATS, PD_SUMMARY_TYPES, PD_SUMMARY_PAGES };
+// The POKéDEX entry's sections (the app's DexSection).
+enum { PD_DEX_INFO, PD_DEX_EVOLVE, PD_DEX_AREA, PD_DEX_MOVES, PD_DEX_SECTIONS };
 
 enum pd_screen_mode {
     PD_SCREEN_PIXEL,   // 1x, pixel for pixel
@@ -114,6 +116,9 @@ struct pd_ui {
     // list), and which dex shows (-1 = the save's own: National once it has
     // it, else the regional one).
     int dexScroll, dexOpen, dexNational;
+    // The open entry's section (PD_DEX_*: INFO / EVOLVE / AREA / MOVES, kept
+    // while stepping entries, like the app's DexUiState.section) and its scroll.
+    int dexSection, dexSectionScroll;
     // MAP: the page shown (-1 = the player's), the tapped place, the cursor's blink.
     int mapPage, mapSel, mapDungeon, mapSelTx, mapSelTy;
     bool mapBlink;

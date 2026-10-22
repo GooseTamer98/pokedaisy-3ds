@@ -19,7 +19,24 @@ struct pd_dex_entry {
     int type1, type2;
     int stats[6]; // HP, ATK, DEF, SP.ATK, SP.DEF, SPEED (the app's order)
     char ability1[16], ability2[16];
+    // gBaseStats' catch rate, gender ratio (PERCENT_FEMALE; 0 / 254 / 255 =
+    // all male / female / genderless) and egg groups (EGG_GROUP_*).
+    int catchRate, genderRatio, eggGroup1, eggGroup2;
 };
+
+// The DEX entry's MOVES (the app's DexDetails.levelUp / teachable).
+struct pd_level_move {
+    int level, move;
+};
+struct pd_tm_move {
+    char label[8]; // "TM01", "HM05"
+    int move;
+};
+int pd_level_moves(const struct pd_game* g, int species, struct pd_level_move* out, int max);
+// TM / HM moves species can learn; -1 when the game's tables aren't known.
+int pd_tm_moves(const struct pd_game* g, int species, struct pd_tm_move* out, int max);
+// EGG_GROUP_* as the games' summaries name them ("WATER 1"), "" = none.
+const char* pd_egg_group_name(int group);
 
 // Whether g's ROM has this port's POKéDEX tables (the app's probe: entry 1
 // is SEED, 7 dm, 69 hg; species 1 is national 1).
