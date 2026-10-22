@@ -260,11 +260,170 @@ static const struct pd_config EMERALD = {
     .frontierBpOff = 0xEBA,
 };
 
+// NATIVE_RUBY / NATIVE_SAPPHIRE (AXVE / AXPE, rev 1 and rev 2 - pret's
+// pokeruby builds each byte-identical to retail; all four agree on every
+// address below), with POKEDEX_RUBY / _SAPPHIRE and GUIDE_TABLES_RUBY /
+// _SAPPHIRE. Emerald's engine with the switches pd_config describes: the
+// party in IWRAM, static save blocks, no encryption key, gBagPockets in the
+// ROM, inBattle at gMain+0x43D. No item icons (the R/S bag never draws one),
+// no card; the battle controls but not the POKéMON switch (R/S's party menu
+// keeps its cursor in a sprite, not gPartyMenu).
+#define RUBY_SAPPHIRE_COMMON                                                                            \
+    .playerParty = 0x03004360,                                                                          \
+    .playerPartyCount = 0x03004350,                                                                     \
+    .battleMons = 0x02024A80,                                                                           \
+    .battlerPositions = 0x02024A72,                                                                     \
+    .battlersCount = 0x02024A68,                                                                        \
+    .battleTypeFlags = 0x020239F8,                                                                      \
+    .gMain = 0x03001770,                                                                                \
+    .saveBlock1Ptr = 0x02025734,                                                                        \
+    .saveBlock2Ptr = 0x02024EA4,                                                                        \
+    .staticSaveBlocks = true,                                                                           \
+    .noEncryptionKey = true,                                                                            \
+    .inBattleOff = 0x43D,                                                                               \
+    .mapHeader = 0x0202E828,                                                                            \
+    .moneyOff = 0x490,                                                                                  \
+    .bagOrder = { PD_POCKET_ITEMS, PD_POCKET_BALLS, PD_POCKET_TMHM, PD_POCKET_BERRIES, PD_POCKET_KEY }, \
+    .itemCount = 349,                                                                                   \
+    .battlerControllerFuncs = 0x03004330,                                                               \
+    .inputAction = 0x0802C098,                                                                          \
+    .inputMove = 0x0802C68C,                                                                            \
+    .inputTarget = 0x0802C2EC,                                                                          \
+    .inputItem = 0x0802E03C,                                                                            \
+    .inputParty = 0x0802DF88,                                                                           \
+    .actionCursor = 0x02024E60,                                                                         \
+    .moveCursor = 0x02024E64,                                                                           \
+    /* FOE TEAM: gEnemyParty in IWRAM; monToSwitchIntoId at gSharedMem+0x16068. */                      \
+    .enemyParty = 0x030045C0,                                                                           \
+    .battlerPartyIndexes = 0x02024A6A,                                                                  \
+    .battleStructPtr = 0x02000000,                                                                      \
+    .battleStructStatic = true,                                                                         \
+    .monToSwitchIntoOff = 0x16068,                                                                      \
+    .dexEntryStride = 0x24,                                                                             \
+    .dexPage2Off = 0x14,                                                                                \
+    .regionalCount = 202,                                                                               \
+    .regionName = "HOENN",                                                                              \
+    .dexSeenCopy1 = 0x938,                                                                              \
+    .dexSeenCopy2 = 0x3A8C,                                                                             \
+    .nationalMagicOff = 2,                                                                              \
+    .nationalMagic = 0xDA,                                                                              \
+    .flagsOff = 0x1220,                                                                                 \
+    .varsOff = 0x1340,                                                                                  \
+    .flagBytes = 0x120,                                                                                 \
+    .probeTrainer = 265,                                                                                \
+    .probeName = "ROXANNE"
+
+static const struct pd_config RUBY = {
+    RUBY_SAPPHIRE_COMMON,
+    .bagPockets = 0x083C1634,
+    .items = 0x083C5580,
+    .monIconTable = 0x083BBD3C,
+    .monIconPaletteIndices = 0x083BC41C,
+    .monIconPaletteTable = 0x083BC5D4,
+    .dexEntries = 0x083B1874,
+    .frontPics = 0x081E836C,
+    .palettes = 0x081EA5CC,
+    .speciesInfo = 0x081FEC30,
+    .speciesToNational = 0x081FC52E,
+    .abilityNames = 0x081FA260,
+    .footprints = 0x083B4F00,
+    .evolutions = 0x08203B80,
+    .tmhmLearnsets = 0x081FD108,
+    .tmhmMoves = 0x0837651C,
+    .regionalOrder = 0x081FC864,
+    .trainers = 0x081F0514,
+    .learnsets = 0x08207BE0,
+    .wildHeaders = 0x0839D46C,
+    .mapGroups = 0x083085A0,
+};
+
+static const struct pd_config SAPPHIRE = {
+    RUBY_SAPPHIRE_COMMON,
+    .bagPockets = 0x083C1690,
+    .items = 0x083C55DC,
+    .monIconTable = 0x083BBD98,
+    .monIconPaletteIndices = 0x083BC478,
+    .monIconPaletteTable = 0x083BC630,
+    .dexEntries = 0x083B18D0,
+    .frontPics = 0x081E82FC,
+    .palettes = 0x081EA55C,
+    .speciesInfo = 0x081FEBC0,
+    .speciesToNational = 0x081FC4BE,
+    .abilityNames = 0x081FA1F0,
+    .footprints = 0x083B4F5C,
+    .evolutions = 0x08203B10,
+    .tmhmLearnsets = 0x081FD098,
+    .tmhmMoves = 0x083764AC,
+    .regionalOrder = 0x081FC7F4,
+    .trainers = 0x081F04A4,
+    .learnsets = 0x08207B70,
+    .wildHeaders = 0x0839D2B4,
+    .mapGroups = 0x08308530,
+};
+
 const uint8_t* pd_rom_at(const struct pd_game* g, uint32_t addr, size_t len) {
     if (!g->rom || addr < 0x08000000) return NULL;
     size_t off = addr - 0x08000000;
     if (off > g->romSize || len > g->romSize - off) return NULL;
     return g->rom + off;
+}
+
+// English rev 0 (RetailPortsGen's PORT_AXVE0 / PORT_AXPE0, sha1 f28b6ffc... /
+// 3ccbbd45...): rev 1's RAM, its ROM tables a few bytes earlier.
+static const struct pd_config RUBY_REV0 = {
+    RUBY_SAPPHIRE_COMMON,
+    .bagPockets = 0x083C1618,
+    .items = 0x083C5564,
+    .monIconTable = 0x083BBD20,
+    .monIconPaletteIndices = 0x083BC400,
+    .monIconPaletteTable = 0x083BC5B8,
+    .dexEntries = 0x083B1858,
+    .frontPics = 0x081E8354,
+    .palettes = 0x081EA5B4,
+    .speciesInfo = 0x081FEC18,
+    .speciesToNational = 0x081FC516,
+    .abilityNames = 0x081FA248,
+    .footprints = 0x083B4EE4,
+    .evolutions = 0x08203B68,
+    .tmhmLearnsets = 0x081FD0F0,
+    .tmhmMoves = 0x08376504,
+    .regionalOrder = 0x081FC84C,
+    .trainers = 0x081F04FC,
+    .learnsets = 0x08207BC8,
+    .wildHeaders = 0x0839D454,
+    .mapGroups = 0x08308588,
+};
+
+static const struct pd_config SAPPHIRE_REV0 = {
+    RUBY_SAPPHIRE_COMMON,
+    .bagPockets = 0x083C1670,
+    .items = 0x083C55BC,
+    .monIconTable = 0x083BBD78,
+    .monIconPaletteIndices = 0x083BC458,
+    .monIconPaletteTable = 0x083BC610,
+    .dexEntries = 0x083B18B0,
+    .frontPics = 0x081E82E4,
+    .palettes = 0x081EA544,
+    .speciesInfo = 0x081FEBA8,
+    .speciesToNational = 0x081FC4A6,
+    .abilityNames = 0x081FA1D8,
+    .footprints = 0x083B4F3C,
+    .evolutions = 0x08203AF8,
+    .tmhmLearnsets = 0x081FD080,
+    .tmhmMoves = 0x08376494,
+    .regionalOrder = 0x081FC7DC,
+    .trainers = 0x081F048C,
+    .learnsets = 0x08207B58,
+    .wildHeaders = 0x0839D29C,
+    .mapGroups = 0x08308518,
+};
+
+bool pd_game_is_rs(const struct pd_game* g) {
+    return !strcmp(g->code, "AXVE") || !strcmp(g->code, "AXPE");
+}
+
+uint32_t pd_in_battle_addr(const struct pd_config* cfg) {
+    return cfg->gMain + (cfg->inBattleOff ? cfg->inBattleOff : 0x439);
 }
 
 unsigned pd_rom_id(const struct pd_game* g) {
@@ -296,6 +455,24 @@ void pd_game_detect(struct pd_game* g, const uint8_t* header, size_t romSize) {
         g->kind = PD_GAME_EMERALD;
         g->title = "Pokémon Emerald";
         g->cfg = &EMERALD;
+    } else if (!strcmp(g->code, "AXVE") || !strcmp(g->code, "AXPE")) {
+        g->kind = PD_GAME_EMERALD;
+        bool ruby = g->code[1] == 'X' && g->code[2] == 'V';
+        g->title = ruby ? "Pokémon Ruby" : "Pokémon Sapphire";
+        if (g->revision == 1 || g->revision == 2) {
+            g->cfg = ruby ? &RUBY : &SAPPHIRE;
+        } else if (g->revision == 0) {
+            g->cfg = ruby ? &RUBY_REV0 : &SAPPHIRE_REV0;
+        } else {
+            g->unsupported = "This revision isn't supported yet";
+            return;
+        }
+        if (romSize > 0x1000000) {
+            g->cfg = NULL;
+            g->title = ruby ? "Ruby ROM hack" : "Sapphire ROM hack";
+            g->unsupported = "ROM hacks aren't supported on 3DS yet";
+        }
+        return;
     } else {
         g->title = "Unknown game";
         g->unsupported = "Not a game the 3DS companion knows yet";

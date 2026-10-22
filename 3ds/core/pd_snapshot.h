@@ -135,6 +135,11 @@ bool pd_dex_seen(const struct pd_snapshot* s, int national);
 bool pd_dex_caught(const struct pd_snapshot* s, int national);
 bool pd_bag_has(const struct pd_snapshot* s, int item);
 
+// The save blocks' addresses (through gSaveBlock*Ptr, or R/S's static ones)
+// and SaveBlock2's encryption key (0 where the game has none).
+bool pd_save_blocks(const struct pd_config* cfg, pd_read_fn read, void* ctx, uint32_t* sb1, uint32_t* sb2);
+bool pd_save_key(const struct pd_config* cfg, pd_read_fn read, void* ctx, uint32_t sb2, uint32_t* key);
+
 void pd_snapshot_read(struct pd_snapshot* s, const struct pd_game* g, pd_read_fn read, void* ctx);
 
 // The English games' text (up to 0xFF or maxLen bytes) as UTF-8; line breaks

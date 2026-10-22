@@ -19,12 +19,18 @@ static uint32_t u32(const uint8_t* p) {
 }
 
 const struct pd_guide* pd_guide_for(const struct pd_game* g) {
+    // Ruby / Sapphire run as Emerald but have a guide of their own (the app's GuideId).
+    if (pd_game_is_rs(g)) return !strcmp(g->code, "AXVE") ? &pd_guide_ruby : &pd_guide_sapphire;
     if (g->kind == PD_GAME_EMERALD) return &pd_guide_emerald;
     if (g->kind == PD_GAME_FIRERED) return !strcmp(g->code, "BPGE") ? &pd_guide_leafgreen : &pd_guide_firered;
     return NULL;
 }
 
 const struct pd_area_thing* pd_areas_for(const struct pd_game* g, int* count) {
+    if (pd_game_is_rs(g)) {
+        *count = pd_areas_ruby_sapphire_count;
+        return pd_areas_ruby_sapphire;
+    }
     if (g->kind == PD_GAME_EMERALD) {
         *count = pd_areas_emerald_count;
         return pd_areas_emerald;

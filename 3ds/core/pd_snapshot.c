@@ -187,6 +187,25 @@ static void decode_battle_mon(const uint8_t* raw, struct pd_battle_mon* b) {
 
 static void read_save_fields(struct pd_snapshot* s, const struct pd_config* cfg, pd_read_fn read, void* ctx,
                              uint32_t sb1, uint32_t sb2);
+static bool read_u32(pd_read_fn read, void* ctx, uint32_t addr, uint32_t* out);
+
+bool pd_save_blocks(const struct pd_config* cfg, pd_read_fn read, void* ctx, uint32_t* sb1, uint32_t* sb2) {
+    if (cfg->staticSaveBlocks) {
+        *sb1 = cfg->saveBlock1Ptr;
+        *sb2 = cfg->saveBlock2Ptr;
+        return true;
+    }
+    return read_u32(read, ctx, cfg->saveBlock1Ptr, sb1) && in_ram(*sb1) && read_u32(read, ctx, cfg->saveBlock2Ptr, sb2) &&
+        in_ram(*sb2);
+}
+
+bool pd_save_key(const struct pd_config* cfg, pd_read_fn read, void* ctx, uint32_t sb2, uint32_t* key) {
+    if (cfg->noEncryptionKey) {
+        *key = 0;
+        return true;
+    }
+    return read_u32(read, ctx, sb2 + cfg->encryptionKeyOff, key);
+}
 static void read_foes(struct pd_snapshot* s, const struct pd_config* cfg, pd_read_fn read, void* ctx, int foeBattler);
 
 static bool read_u32(pd_read_fn read, void* ctx, uint32_t addr, uint32_t* out) {
@@ -215,10 +234,10 @@ void pd_snapshot_read(struct pd_snapshot* s, const struct pd_game* g, pd_read_fn
         }
     }
 
-    // --- battle --- (gMain.inBattle is bit 1 of the byte at +0x439)
+    // --- battle --- (gMain.inBattle is bit 1 of the byte at +0x439, R/S +0x43D)
     s->foeActive = s->foeNext = -1;
     uint8_t flags = 0;
-    read(ctx, cfg->gMain + 0x439, &flags, 1);
+    read(ctx, pd_in_battle_addr(cfg), &flags, 1);
     s->inBattle = (flags & 0x02) != 0;
     s->inputState = pd_battle_input(g, read, ctx, &s->inputBattler);
     if (s->inBattle) {
@@ -247,12 +266,10 @@ void pd_snapshot_read(struct pd_snapshot* s, const struct pd_game* g, pd_read_fn
     read(ctx, cfg->mapHeader + MAP_HEADER_MAPSEC_OFF, &sec, 1);
     s->mapsec = sec;
 
-    // --- money: SaveBlock1.money XOR SaveBlock2.encryptionKey ---
+    // --- money: SaveBlock1.money XOR SaveBlock2.encryptionKey (R/S: plain) ---
     uint32_t sb1 = 0, sb2 = 0, money = 0, key = 0;
-    bool haveKey = read_u32(read, ctx, cfg->saveBlock2Ptr, &sb2) && in_ram(sb2) &&
-        read_u32(read, ctx, sb2 + cfg->encryptionKeyOff, &key);
-    if (haveKey && read_u32(read, ctx, cfg->saveBlock1Ptr, &sb1) && in_ram(sb1) &&
-        read_u32(read, ctx, sb1 + cfg->moneyOff, &money)) {
+    bool haveKey = pd_save_blocks(cfg, read, ctx, &sb1, &sb2) && pd_save_key(cfg, read, ctx, sb2, &key);
+    if (haveKey && read_u32(read, ctx, sb1 + cfg->moneyOff, &money)) {
         uint32_t v = money ^ key;
         if (v <= MAX_MONEY) s->money = (long) v;
     }
@@ -279,7 +296,7 @@ void pd_snapshot_read(struct pd_snapshot* s, const struct pd_game* g, pd_read_fn
         }
     }
 
-    bool saveOk = haveKey && in_ram(sb1);
+    bool saveOk = haveKey;
     s->gender = -1;
     if (saveOk) read_save_fields(s, cfg, read, ctx, sb1, sb2);
 
@@ -305,7 +322,7 @@ static void read_card_fields(struct pd_snapshot* s, const struct pd_config* cfg,
     uint8_t head[0x12];
     uint32_t key;
     uint8_t stats[PD_GAME_STATS * 4];
-    if (!read(ctx, sb2, head, sizeof(head)) || !read_u32(read, ctx, sb2 + cfg->encryptionKeyOff, &key) ||
+    if (!read(ctx, sb2, head, sizeof(head)) || !pd_save_key(cfg, read, ctx, sb2, &key) ||
         !read(ctx, sb1 + cfg->gameStatsOff, stats, sizeof(stats))) {
         return;
     }
@@ -415,7 +432,7 @@ const char* pd_item_description(const struct pd_game* g, int item) {
     static unsigned cachedRom;
     static int cachedItem;
     static char text[256];
-    if (item <= 0 || !g->cfg || !g->cfg->items) return "";
+    if (item <= 0 || !g->cfg || !g->cfg->items || (g->cfg->itemCount && item >= g->cfg->itemCount)) return "";
     if (cachedRom == pd_rom_id(g) && cachedItem == item) return text;
     text[0] = 0;
     const uint8_t* rec = pd_rom_at(g, g->cfg->items + (uint32_t) item * 44, 44);
@@ -477,7 +494,9 @@ static void read_foes(struct pd_snapshot* s, const struct pd_config* cfg, pd_rea
     }
     uint32_t bs = 0;
     uint8_t next = 0xFF;
-    if (s->foeActive >= 0 && read_u32(read, ctx, cfg->battleStructPtr, &bs) && in_ram(bs) &&
+    if (cfg->battleStructStatic) bs = cfg->battleStructPtr;
+    else read_u32(read, ctx, cfg->battleStructPtr, &bs);
+    if (s->foeActive >= 0 && in_ram(bs) &&
         read(ctx, bs + cfg->monToSwitchIntoOff + (uint32_t) foeBattler, &next, 1) && next < s->foeCount &&
         next != s->foeActive && s->foes[next].hp > 0 && s->foes[s->foeActive].hp == 0) {
         s->foeNext = next;

@@ -15,7 +15,7 @@ struct pd_dex_entry {
     int national, species;
     char category[24]; // "SEED"
     int heightDm, weightHg;
-    char description[240];
+    char description[320];
     int type1, type2;
     int stats[6]; // HP, ATK, DEF, SP.ATK, SP.DEF, SPEED (the app's order)
     char ability1[16], ability2[16];

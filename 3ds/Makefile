@@ -28,6 +28,8 @@ $(BUILD)/pd_preview: $(CORE_SRC) $(wildcard core/*.h) desktop/pd_preview.c deskt
 # already have (make preview FR_ROM=...).
 FR_ROM ?= $(BUILD)/decomps/pokefirered/pokefirered_rev1.gba
 EM_ROM ?= $(BUILD)/decomps/pokeemerald/pokeemerald.gba
+RU_ROM ?= $(BUILD)/decomps/pokeruby/pokeruby_rev1.gba
+SA_ROM ?= $(BUILD)/decomps/pokeruby/pokesapphire_rev1.gba
 rom_if = $(if $(wildcard $(1)),$(1),)
 
 preview: $(BUILD)/pd_preview
@@ -40,6 +42,9 @@ preview: $(BUILD)/pd_preview
 	@mkdir -p $(BUILD)/fixtures/emerald_trainer
 	PD_PREVIEW_TRAINER_DIR=$(BUILD)/fixtures/emerald_trainer \
 		$(BUILD)/pd_preview $(FIXTURES)/emerald_de_battle BPEE $(BUILD)/shots emerald-battle $(call rom_if,$(EM_ROM))
+	$(BUILD)/pd_preview $(FIXTURES)/ruby_rev1 AXVE1 $(BUILD)/shots ruby $(call rom_if,$(RU_ROM))
+	$(BUILD)/pd_preview $(FIXTURES)/sapphire_rev1 AXPE1 $(BUILD)/shots sapphire $(call rom_if,$(SA_ROM))
+	$(BUILD)/pd_preview $(FIXTURES)/sapphire_rev1_battle AXPE1 $(BUILD)/shots sapphire-battle $(call rom_if,$(SA_ROM))
 
 decomps:
 	test/build_decomps.sh

@@ -30,7 +30,7 @@ enum pd_bin pd_battle_input(const struct pd_game* g, pd_read_fn read, void* ctx,
     *battler = 0;
     if (!pd_battle_input_known(g)) return PD_BIN_NONE;
     uint8_t flags = 0, raw[MAX_BATTLERS * 4];
-    if (!read(ctx, cfg->gMain + 0x439, &flags, 1) || !(flags & 2)) return PD_BIN_NONE;
+    if (!read(ctx, pd_in_battle_addr(cfg), &flags, 1) || !(flags & 2)) return PD_BIN_NONE;
     if (!read(ctx, cfg->battlerControllerFuncs, raw, sizeof(raw))) return PD_BIN_NONE;
     for (int i = 0; i < MAX_BATTLERS; i++) {
         uint32_t fn = u32(raw + i * 4) & ~1u;

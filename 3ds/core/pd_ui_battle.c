@@ -599,9 +599,12 @@ static void controls(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game
                      const struct mon_view* foe, const struct mon_view* you, int ix, int iy, int iw, int ih) {
     bool enabled = !pd_bctl_busy(&ui->bctl);
     int state = s->inputState;
-    if (state != PD_BIN_ACTION && state != PD_BIN_MOVE) ui->battleChoose = state == PD_BIN_PARTY ? 2 : 0;
+    // Without gPartyMenu (Ruby / Sapphire: their party cursor is a sprite)
+    // there's no switch of ours: POKéMON opens the game's own party screen.
+    bool picker = g->cfg && g->cfg->partyMenu;
+    if (state != PD_BIN_ACTION && state != PD_BIN_MOVE) ui->battleChoose = state == PD_BIN_PARTY && picker ? 2 : 0;
     // The party pane takes the window's whole height (the app's).
-    if (state == PD_BIN_PARTY || (state == PD_BIN_ACTION && ui->battleChoose == 2)) {
+    if ((state == PD_BIN_PARTY && picker) || (state == PD_BIN_ACTION && ui->battleChoose == 2)) {
         party_pane(ui, c, g, s, foe, ix, iy, iw, ih - 24, enabled);
         if (state == PD_BIN_PARTY) game_button(ui, c, ix + iw - 80, iy + ih - 22, 80, 22, "BACK", RUN_BLUE, RUN_BLUE_DARK, HIT_BC_BACK, enabled);
         else game_button(ui, c, ix + iw - 80, iy + ih - 22, 80, 22, "CANCEL", RUN_BLUE, RUN_BLUE_DARK, HIT_BC_CANCEL, true);
@@ -634,8 +637,8 @@ static void controls(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game
                     state == PD_BIN_MOVE ? HIT_BC_BACK : HIT_BC_CANCEL, enabled || state != PD_BIN_MOVE);
         return;
     }
-    if (state == PD_BIN_BAG) {
-        centred_note(c, ix, y, iw, h - 30, "The game's bag is open.");
+    if (state == PD_BIN_BAG || state == PD_BIN_PARTY) {
+        centred_note(c, ix, y, iw, h - 30, state == PD_BIN_BAG ? "The game's bag is open." : "The game's party screen is open.");
         game_button(ui, c, ix + (iw - 80) / 2, y + h - 26, 80, 24, "BACK", RUN_BLUE, RUN_BLUE_DARK, HIT_BC_BACK, enabled);
         return;
     }
@@ -710,6 +713,7 @@ void ui_battle_tab(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game* 
 
 bool ui_battle_act(struct pd_ui* ui, int id) {
     const struct pd_snapshot* s = ui->snap;
+    const struct pd_game* g = ui->game;
     if (id == HIT_BC_CONTROLS) {
         ui->battlePane = PD_BATTLE_CONTROLS;
         return true;
@@ -728,7 +732,7 @@ bool ui_battle_act(struct pd_ui* ui, int id) {
         // FIGHT and POKéMON open our own grid / party first (the app's): the
         // game's screen only opens once a move or a Pokémon is picked.
         if (action == 0) ui->battleChoose = 1;
-        else if (action == 2) ui->battleChoose = 2;
+        else if (action == 2 && g && g->cfg && g->cfg->partyMenu) ui->battleChoose = 2;
         else pd_bctl_action(&ui->bctl, action);
         return true;
     }

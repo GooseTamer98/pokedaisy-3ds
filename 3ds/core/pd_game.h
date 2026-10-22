@@ -12,7 +12,7 @@
 enum pd_game_kind {
     PD_GAME_NONE = 0,
     PD_GAME_FIRERED,  // FireRed and LeafGreen (LeafGreen runs as FireRed, like the app)
-    PD_GAME_EMERALD,
+    PD_GAME_EMERALD,  // Emerald, Ruby and Sapphire (R/S run as Emerald, like the app)
 };
 
 struct pd_config {
@@ -28,6 +28,13 @@ struct pd_config {
     uint32_t mapHeader;
     uint32_t encryptionKeyOff; // in SaveBlock2
     uint32_t moneyOff;         // in SaveBlock1
+    // Ruby / Sapphire's engine (the app's NATIVE_RUBY): saveBlock1Ptr / 2Ptr
+    // are the save blocks themselves (no pointers, no per-load shuffle), no
+    // encryption key (money and bag quantities are plain), gBagPockets is a
+    // ROM table, gMain.inBattle sits at +0x43D (0 = Emerald / FireRed's
+    // 0x439) and gBattleStruct is static (battleStructPtr = the struct).
+    bool staticSaveBlocks, noEncryptionKey, battleStructStatic;
+    uint32_t inBattleOff;
     // The battle's FOE TEAM: gEnemyParty (6 struct Pokemon), gBattlerPartyIndexes
     // (u16 per battler: which one is out) and gBattleStruct (a pointer) ->
     // monToSwitchIntoId[battler] (the trainer's next pick). 0 = unknown.
@@ -47,6 +54,7 @@ struct pd_config {
     // +0x0E, description pointer +0x14) - the bag's descriptions are read from
     // the player's ROM, never bundled. 0 = none.
     uint32_t items;
+    int itemCount; // ITEMS_COUNT where ids past it read past gItems (R/S: 349); 0 = no limit
     // sItemIconTable: {LZ77 tiles, LZ77 palette} per item, 24x24 (DecompIconSource.fetchItem).
     uint32_t itemIcons;
 
@@ -63,6 +71,7 @@ struct pd_config {
     // POKéDEX (the app's PokedexTables): ROM tables ...
     uint32_t dexEntries;       // gPokedexEntries, by national number
     uint32_t dexEntryStride;
+    uint32_t dexPage2Off;      // R/S: a second description pointer (page 2); 0 = one page
     uint32_t speciesInfo;      // gBaseStats, 28 bytes per species
     uint32_t speciesToNational; // u16 per species from species 1
     uint32_t abilityNames;     // 13 bytes each
@@ -138,6 +147,11 @@ unsigned pd_rom_id(const struct pd_game* g);
 bool pd_rom_read(const struct pd_game* g, uint32_t addr, void* out, size_t len);
 // A pointer into the ROM at a bus address, with at least len bytes after it.
 const uint8_t* pd_rom_at(const struct pd_game* g, uint32_t addr, size_t len);
+
+// Ruby / Sapphire (AXVE / AXPE), which run as PD_GAME_EMERALD.
+bool pd_game_is_rs(const struct pd_game* g);
+// gMain.inBattle's byte.
+uint32_t pd_in_battle_addr(const struct pd_config* cfg);
 
 // Reads the ROM header (the first 0xC0 bytes of the ROM) and its size.
 void pd_game_detect(struct pd_game* g, const uint8_t* header, size_t romSize);

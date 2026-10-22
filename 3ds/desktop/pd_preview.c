@@ -3,7 +3,7 @@
 // like the 3DS: the 400x240 top screen over the 320x240 bottom one. No ROM, no
 // emulator: the 3DS port's ui-preview, for looking at every UI change.
 //
-//   pd_preview <fixture dir> <BPRE|BPGE|BPEE> <out dir> <name>
+//   pd_preview <fixture dir> <BPRE|BPGE|BPEE|AXVE|AXPE>[rev] <out dir> <name>
 //
 // writes <name>-party.png, -pressed, -summary, -battle, -bag, -bag-item,
 // -bag-scrolled, -bag-pocket, -settings, -pick-screen and -confirm-save.
@@ -82,6 +82,12 @@ static bool fixture_read(void* ctx, uint32_t addr, void* out, size_t len) {
         return true;
     }
     return false;
+}
+
+// A RAM address in the fixture (EWRAM or IWRAM: R/S keep the parties in IWRAM).
+static uint8_t* fixture_ram(uint32_t addr) {
+    if (addr >= 0x03000000 && addr < 0x03008000) return iwram + (addr - 0x03000000);
+    return ewram + (addr - 0x02000000);
 }
 
 // Both screens in one picture: the top screen (here a stand-in for the game
@@ -187,7 +193,7 @@ static void drag(struct preview* p, int id, int dy) {
 
 int main(int argc, char** argv) {
     if (argc != 5 && argc != 6) {
-        fprintf(stderr, "usage: pd_preview <fixture dir> <BPRE|BPGE|BPEE> <out dir> <name> [rom]\n");
+        fprintf(stderr, "usage: pd_preview <fixture dir> <BPRE|BPGE|BPEE|AXVE|AXPE>[rev] <out dir> <name> [rom]\n");
         return 2;
     }
     const char *dir = argv[1], *code = argv[2], *out = argv[3], *name = argv[4];
@@ -197,7 +203,8 @@ int main(int argc, char** argv) {
     }
     uint8_t header[0xC0] = { 0 };
     memcpy(header + 0xAC, code, 4);
-    header[0xBC] = strcmp(code, "BPEE") ? 1 : 0;
+    // A digit after the code is the revision (AXPE1); else FireRed's 1, Emerald's 0.
+    header[0xBC] = code[4] >= '0' && code[4] <= '9' ? (uint8_t) (code[4] - '0') : strcmp(code, "BPEE") ? 1 : 0;
     struct pd_game game;
     pd_game_detect(&game, header, 0x1000000);
     // A ROM (pret's byte-identical builds stand in for retail) feeds the tabs
@@ -273,9 +280,16 @@ int main(int argc, char** argv) {
         tap(&p, HIT_BC_FIGHT, 0);
         shot(out, name, "battle-controls-moves", px);
         tap(&p, HIT_BC_CANCEL, 0);
-        tap(&p, HIT_BC_FIGHT + 2, 0);
-        shot(out, name, "battle-controls-party", px);
-        tap(&p, HIT_BC_CANCEL, 0);
+        if (game.cfg->partyMenu) {
+            tap(&p, HIT_BC_FIGHT + 2, 0);
+            shot(out, name, "battle-controls-party", px);
+            tap(&p, HIT_BC_CANCEL, 0);
+        } else {
+            // No switch of ours (R/S): POKéMON opens the game's party screen.
+            snap.inputState = PD_BIN_PARTY;
+            draw(&p);
+            shot(out, name, "battle-controls-party", px);
+        }
         snap.inputState = PD_BIN_BAG;
         draw(&p);
         shot(out, name, "battle-controls-bag", px);
@@ -501,16 +515,16 @@ int main(int argc, char** argv) {
     // third (gBattleStruct->monToSwitchIntoId), and the last slot is tapped.
     if (snap.inBattle && game.cfg->enemyParty && snap.partyCount >= 5) {
         const struct pd_config* cfg = game.cfg;
-        uint8_t* enemy = ewram + (cfg->enemyParty - 0x02000000);
-        const uint8_t* party = ewram + (cfg->playerParty - 0x02000000);
+        uint8_t* enemy = fixture_ram(cfg->enemyParty);
+        const uint8_t* party = fixture_ram(cfg->playerParty);
         static const int FROM[3] = { 1, 2, 4 };
         for (int i = 0; i < 3; i++) memcpy(enemy + (i + 1) * 100, party + FROM[i] * 100, 100);
-        ewram[cfg->battleTypeFlags - 0x02000000] |= 0x08;
+        *fixture_ram(cfg->battleTypeFlags) |= 0x08;
         int foeBattler = 0;
-        while (foeBattler < 4 && ewram[cfg->battlerPositions - 0x02000000 + foeBattler] != PD_POS_OPPONENT_LEFT) {
+        while (foeBattler < 4 && fixture_ram(cfg->battlerPositions)[foeBattler] != PD_POS_OPPONENT_LEFT) {
             foeBattler++;
         }
-        uint8_t* idx = ewram + (cfg->battlerPartyIndexes - 0x02000000) + foeBattler * 2;
+        uint8_t* idx = fixture_ram(cfg->battlerPartyIndexes) + foeBattler * 2;
         idx[0] = idx[1] = 0;
         // PD_PREVIEW_TRAINER_DIR: keep this RAM as a fixture of its own, for
         // a fixture ROM the 3DS app can be run on (make fixture-roms).
@@ -533,10 +547,10 @@ int main(int argc, char** argv) {
 
         // The first one faints (its party HP and the battler's), the trainer picks the third.
         enemy[0x56] = enemy[0x57] = 0;
-        uint8_t* foeMon = ewram + (cfg->battleMons - 0x02000000) + foeBattler * 0x58;
+        uint8_t* foeMon = fixture_ram(cfg->battleMons) + foeBattler * 0x58;
         foeMon[0x28] = foeMon[0x29] = 0;
-        uint32_t bs = 0;
-        memcpy(&bs, ewram + (cfg->battleStructPtr - 0x02000000), 4);
+        uint32_t bs = cfg->battleStructPtr;
+        if (!cfg->battleStructStatic) memcpy(&bs, fixture_ram(cfg->battleStructPtr), 4);
         if (bs >= 0x02000000 && bs < 0x02040000) ewram[bs - 0x02000000 + cfg->monToSwitchIntoOff + foeBattler] = 2;
         pd_snapshot_read(&snap, &game, fixture_read, &game);
         pd_ui_update(&ui, &snap);

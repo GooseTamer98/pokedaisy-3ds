@@ -82,6 +82,14 @@ bool pd_dex_entry(const struct pd_game* g, int national, struct pd_dex_entry* ou
     out->weightHg = u16(e + 0x0E);
     const uint8_t* d = pd_rom_at(g, u32(e + 0x10), 200);
     if (d) pd_gen3_text(d, 200, out->description, sizeof(out->description));
+    // Ruby / Sapphire split the text over two pages: the second follows the first.
+    const uint8_t* d2 = cfg->dexPage2Off ? pd_rom_at(g, u32(e + cfg->dexPage2Off), 200) : NULL;
+    size_t n = strlen(out->description);
+    if (d2 && n && n + 2 < sizeof(out->description)) {
+        out->description[n++] = ' ';
+        pd_gen3_text(d2, 200, out->description + n, sizeof(out->description) - n);
+        if (!out->description[n]) out->description[n - 1] = 0;
+    }
 
     const uint8_t* b = pd_rom_at(g, cfg->speciesInfo + (uint32_t) out->species * 28, 28);
     if (b) {
