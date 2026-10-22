@@ -41,6 +41,15 @@ extern const int pd_species_type_table_count;
 extern const unsigned char pd_growth_rates[];
 extern const int pd_growth_rates_count;
 extern const int pd_exp_tables[6][101];
+// The move advice's data (the app's MoveStats, from gBattleMoves): the
+// effect (EFFECT_* without the prefix), accuracy (0 = never misses), PP, the
+// effect's chance and priority, by move id.
+struct pd_move_stats {
+    const char* effect;
+    int accuracy, pp, chance, priority;
+};
+extern const struct pd_move_stats pd_move_stats[];
+extern const int pd_move_stats_count;
 // The type chips' colours (AppColors.typeColors), 0xRRGGBB by type id.
 extern const unsigned int pd_type_colors[];
 

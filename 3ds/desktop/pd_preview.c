@@ -248,6 +248,12 @@ int main(int argc, char** argv) {
     shot(out, name, "summary-stats", px);
     tap(&p, HIT_SUMMARY_PAGE + PD_SUMMARY_TYPES, 0);
     shot(out, name, "summary-types", px);
+    tap(&p, HIT_SUMMARY_PAGE + PD_SUMMARY_LEARN, 0);
+    shot(out, name, "summary-learn", px);
+    if (has_hit(&p, HIT_LEARN_ROW)) {
+        tap(&p, HIT_LEARN_ROW, 0);
+        shot(out, name, "summary-learn-open", px);
+    }
     tap(&p, HIT_BACK, 0);
 
     // BATTLE has a chip only while a battle is on.

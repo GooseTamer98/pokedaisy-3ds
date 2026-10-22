@@ -37,6 +37,7 @@ void pd_ui_init(struct pd_ui* ui, struct pd_settings* settings) {
     memset(ui, 0, sizeof(*ui));
     ui->tab = PD_TAB_PARTY;
     ui->summarySlot = -1;
+    ui->learnPick = -1;
     ui->bagSelected = -1;
     ui->pressedId = -1;
     ui->battleSlot = -1;
@@ -160,6 +161,7 @@ static int* scroll_target(struct pd_ui* ui) {
     switch (ui->tab) {
     case PD_TAB_BAG: return &ui->bagScroll;
     case PD_TAB_DEX: return ui->dexOpen ? &ui->dexSectionScroll : &ui->dexScroll;
+    case PD_TAB_PARTY: return ui->summarySlot >= 0 && ui->summaryPage == PD_SUMMARY_LEARN ? &ui->learnScroll : NULL;
     case PD_TAB_GUIDE: return &ui->guideScroll;
     default: return NULL;
     }
@@ -208,8 +210,13 @@ static void act(struct pd_ui* ui, int id) {
     } else if (id >= HIT_SLOT && id < HIT_SLOT + PD_PARTY_SIZE) {
         ui->summarySlot = id - HIT_SLOT;
         ui->summaryPage = PD_SUMMARY_MOVES;
+        ui->learnPick = -1;
+        ui->learnScroll = 0;
     } else if (id >= HIT_SUMMARY_PAGE && id < HIT_SUMMARY_PAGE + PD_SUMMARY_PAGES) {
         ui->summaryPage = id - HIT_SUMMARY_PAGE;
+    } else if (id >= HIT_LEARN_ROW && id < HIT_LEARN_ROW + 64) {
+        // Tapping the open one closes it (LearnRow's onSelect).
+        ui->learnPick = ui->learnPick == id - HIT_LEARN_ROW ? -1 : id - HIT_LEARN_ROW;
     } else if (id == HIT_BACK) {
         pd_ui_back(ui);
     } else if (id == HIT_POCKET_PREV || id == HIT_POCKET_NEXT) {

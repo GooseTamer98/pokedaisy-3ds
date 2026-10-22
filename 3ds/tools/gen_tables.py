@@ -28,6 +28,7 @@ SOURCES = {
     "gender": "GenderRatiosFireRed.kt",
     "species_types": "SpeciesTypes.kt",
     "exp": "ExpTables.kt",
+    "move_stats": "MoveStatsGen.kt",
 }
 # The type chips' colours (AppColors.typeColors), outside the data package.
 THEME = os.path.join(ROOT, "app/src/main/kotlin/com/pokedaisy/app/companion/ui/theme/Theme.kt")
@@ -107,6 +108,12 @@ def main():
     if len(curves) != 6 or any(len(cv) != 101 for cv in curves):
         sys.exit("gen_tables: gen3ExperienceTables isn't six curves of 101 levels")
 
+    # The move advice's data (MoveAdvice.kt's MoveStats): effect, accuracy, PP,
+    # effect chance and priority, indexed by move id.
+    m = re.search(r"val vanillaMoveStats: List<MoveStats> = listOf\((.*?)\n\)", read("move_stats"), re.S)
+    move_stats = [(e, int(a), int(pp), int(ch), int(pr)) for e, a, pp, ch, pr in
+                  re.findall(r'MoveStats\("([A-Z0-9_]+)", (\d+), (\d+), (\d+), (-?\d+)\)', m.group(1))]
+
     # AppColors.typeColors, by the type's id in the names above.
     with open(THEME, encoding="utf-8") as f:
         theme = f.read()
@@ -167,6 +174,12 @@ def main():
             out.append("        " + ", ".join(str(v) for v in cv[i:i + 10]) + ",")
         out.append("    },")
     out.append("};")
+    out.append("")
+    out.append(f"const struct pd_move_stats pd_move_stats[{len(move_stats)}] = {{")
+    for e, a, pp, ch, pr in move_stats:
+        out.append(f"    {{ {c_str(e)}, {a}, {pp}, {ch}, {pr} }},")
+    out.append("};")
+    out.append(f"const int pd_move_stats_count = {len(move_stats)};")
     out.append("")
     top = max(types)
     out.append(f"const unsigned int pd_type_colors[{top + 1}] = {{")

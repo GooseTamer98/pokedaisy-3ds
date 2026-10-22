@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "pd_advice.h"
 #include "pd_icon.h"
 #include "pd_tables.h"
 #include "pd_ui_internal.h"
@@ -266,6 +267,82 @@ static void types_page(struct pd_canvas* c, int ix, int iw, int ty, const struct
     }
 }
 
+#define LEARN_GREEN 0x389830
+#define FORGET_RED 0xD04030
+#define VERDICT_GREY 0x8C8C94
+
+// A pill of white text (VerdictPill); returns its width.
+static int verdict_pill(struct pd_canvas* c, int x, int y, const char* text, uint32_t fill) {
+    int w = pd_text_width(text) + 6;
+    pd_round_rect(c, x, y + 1, w, 14, 2, fill);
+    pd_text(c, x + 3, y - 1, text, 0xFFFFFF, PD_NO_SHADOW);
+    return w;
+}
+
+// CanLearnSection: NEXT LEVELS, then TMs IN THE BAG - each its label, name and
+// type, then LEARN / FORGET <move> / SKIP and its PWR / ACC / PP; the open one
+// says why, in green (good for it) and red pills.
+static void learn_page(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game* g, const struct pd_snapshot* s,
+                       const struct pd_mon* m, int ix, int iw, int ty, int bottom) {
+    static struct pd_learn_option opts[PD_LEARN_MAX];
+    int n = pd_learn_options(g, s, m, opts, PD_LEARN_MAX);
+    if (!n) {
+        pd_text(c, ix, ty, "NOTHING TO LEARN FOR NOW", PD_MUTED, PD_MUTED_SHADOW);
+        return;
+    }
+    char buf[64];
+    int h = bottom - ty;
+    // Heights first: a heading, two lines a row, the open one's reasons.
+    int total = 0;
+    for (int i = 0; i < n; i++) {
+        if (i == 0 || !opts[i].tm[0] != !opts[i - 1].tm[0]) total += 18;
+        total += 36 + (i == ui->learnPick ? opts[i].advice.reasonCount * 16 : 0);
+    }
+    ui->learnScroll = ui_clamp_scroll(ui->learnScroll, total, h);
+    ui_add_scroll_hit(ui, ix - 2, ty, iw + 4, h, HIT_LEARN_LIST);
+    pd_clip(c, ix - 2, ty, iw + 4, h);
+    int y = ty - ui->learnScroll;
+    for (int i = 0; i < n; i++) {
+        const struct pd_learn_option* o = &opts[i];
+        if (i == 0 || !o->tm[0] != !opts[i - 1].tm[0]) {
+            pd_text(c, ix, y, o->tm[0] ? "TMs IN THE BAG" : "NEXT LEVELS", PD_VALUE, PD_VALUE_SHADOW);
+            y += 18;
+        }
+        bool open = i == ui->learnPick;
+        int rowH = 34 + (open ? o->advice.reasonCount * 16 : 0);
+        if (open) pd_round_rect(c, ix - 2, y - 1, iw + 4, rowH, 3, PD_LIST_FILL);
+        int type = pd_move_type(o->move);
+        pd_fill(c, ix - 2, y + 1, 3, rowH - 4, type < 18 && pd_type_colors[type] ? pd_type_colors[type] : PD_MUTED);
+        if (o->tm[0]) snprintf(buf, sizeof(buf), "%s", o->tm);
+        else snprintf(buf, sizeof(buf), "Lv %d", o->level);
+        int lw = pd_text(c, ix + 6, y, buf, PD_MUTED, PD_MUTED_SHADOW);
+        int cw = pd_text_width(pd_type_name(type)) + 8;
+        char name[32];
+        pd_text_fit(c, ix + 6 + lw + 6, y, iw - lw - 18 - cw, pd_move_name(o->move, name, sizeof(name)), PD_LABEL,
+                    PD_LABEL_SHADOW);
+        ui_type_chip(c, ix + iw - cw, y + 2, type, NULL);
+        // VerdictBadge.
+        const struct pd_advice* a = &o->advice;
+        if (a->verdict == PD_REPLACE) snprintf(buf, sizeof(buf), "FORGET %s", pd_move_name(a->forget, name, sizeof(name)));
+        else snprintf(buf, sizeof(buf), "%s", a->verdict == PD_LEARN ? "LEARN" : a->verdict == PD_KNOWN ? "LEARNED" : "SKIP");
+        verdict_pill(c, ix + 6, y + 17, buf, a->verdict == PD_SKIP ? VERDICT_GREY : LEARN_GREEN);
+        const struct pd_move_stats* st = o->move < pd_move_stats_count ? &pd_move_stats[o->move] : NULL;
+        int power = pd_move_power(o->move);
+        char pwr[8], acc[8];
+        snprintf(pwr, sizeof(pwr), power > 1 ? "%d" : "-", power);
+        snprintf(acc, sizeof(acc), st && st->accuracy ? "%d" : "-", st ? st->accuracy : 0);
+        snprintf(buf, sizeof(buf), "PWR %s  ACC %s  PP %d", pwr, acc, st ? st->pp : 0);
+        pd_text_right(c, ix + iw, y + 17, buf, PD_MUTED, PD_MUTED_SHADOW);
+        for (int r = 0; open && r < a->reasonCount; r++) {
+            verdict_pill(c, ix + 6, y + 34 + r * 16, a->reasons[r].text, a->reasons[r].good ? LEARN_GREEN : FORGET_RED);
+        }
+        ui_add_scroll_hit(ui, ix - 2, y, iw + 4, rowH, HIT_LEARN_ROW + i);
+        y += rowH + 2;
+    }
+    pd_unclip(c);
+    ui_scroll_bar(c, ix + iw, ty, h, ui->learnScroll, total, PD_MUTED);
+}
+
 static void page_button(struct pd_ui* ui, struct pd_canvas* c, int x, int y, int w, const char* label, int page) {
     if (ui->summaryPage == page) {
         // The page shown: STATS' purple, like the app's TextNavButton, no tap.
@@ -276,7 +353,8 @@ static void page_button(struct pd_ui* ui, struct pd_canvas* c, int x, int y, int
     ui_button(ui, c, x, y, w, 22, label, HIT_SUMMARY_PAGE + page);
 }
 
-static void summary(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game* g, const struct pd_mon* m) {
+static void summary(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game* g, const struct pd_snapshot* s,
+                    const struct pd_mon* m) {
     int x = MARGIN, y = CONTENT_Y, w = c->w - 2 * MARGIN, h = c->h - CONTENT_Y - MARGIN;
     int f = pd_title_box(c, x, y, w, h, PD_TITLE_FILL);
     int ix = x + f + 6, iw = w - 2 * (f + 6);
@@ -299,15 +377,16 @@ static void summary(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game*
         ty = name_line(c, ix + PD_ICON + 4, iw - PD_ICON - 4, ty, m);
         ty += 6;
         if (ui->summaryPage == PD_SUMMARY_STATS) stats_page(c, ix, iw, ty, m);
-        else types_page(c, ix, iw, ty, m);
+        else if (ui->summaryPage == PD_SUMMARY_TYPES) types_page(c, ix, iw, ty, m);
+        else learn_page(ui, c, g, s, m, ix, iw, ty, by - 4);
     }
-    static const char* const LABELS[PD_SUMMARY_PAGES] = { "MOVES", "STATS", "TYPES" };
-    for (int p = 0; p < PD_SUMMARY_PAGES; p++) page_button(ui, c, ix - 2 + p * 70, by, 66, LABELS[p], p);
+    static const char* const LABELS[PD_SUMMARY_PAGES] = { "MOVES", "STATS", "TYPES", "LEARN" };
+    for (int p = 0; p < PD_SUMMARY_PAGES; p++) page_button(ui, c, ix - 2 + p * 56, by, 52, LABELS[p], p);
 }
 
 void ui_party_tab(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game* g, const struct pd_snapshot* s) {
     if (ui->summarySlot >= 0) {
-        summary(ui, c, g, &s->party[ui->summarySlot]);
+        summary(ui, c, g, s, &s->party[ui->summarySlot]);
         return;
     }
     int gap = 4;

@@ -51,6 +51,8 @@ enum {
     HIT_OPEN_CARD = 3100,
     HIT_CARD = 3101,
     HIT_SUMMARY_PAGE = 3200, // + PD_SUMMARY_*
+    HIT_LEARN_LIST = 3290,
+    HIT_LEARN_ROW = 3300,    // + LEARN option
 };
 
 enum setting_row {
