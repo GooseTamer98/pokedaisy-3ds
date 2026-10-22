@@ -147,3 +147,11 @@ void pd_dex_weight(int hg, char* buf, int len) {
     if (lbs % 10 >= 5) lbs += 10;
     snprintf(buf, (size_t) len, "%ld.%ld lbs.", lbs / 100, (lbs % 100) / 10);
 }
+
+const char* pd_ability_name(const struct pd_game* g, int ability, char* buf, size_t len) {
+    buf[0] = 0;
+    const uint8_t* n = g->cfg && g->cfg->abilityNames && ability > 0
+        ? pd_rom_at(g, g->cfg->abilityNames + (uint32_t) ability * 13, 13) : NULL;
+    if (n) pd_gen3_text(n, 13, buf, len);
+    return buf;
+}

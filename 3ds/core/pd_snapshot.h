@@ -48,6 +48,12 @@ struct pd_battle_mon {
     uint32_t status;
     int moves[PD_NUM_MOVES];
     int pp[PD_NUM_MOVES];
+    // FOE DETAILS (the app's BattleMonLayout, vanilla): the ability (u8 +0x20),
+    // held item (+0x2E), ATTACK, DEFENSE, SPEED, SP. ATK, SP. DEF (+0x02) and
+    // their stages and accuracy / evasion's (+0x19, minus 6: 0 = unchanged).
+    int ability, item;
+    int stats[5];
+    int stages[7];
 };
 
 #define PD_POS_PLAYER_LEFT 0

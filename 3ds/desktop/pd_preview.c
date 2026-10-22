@@ -259,6 +259,11 @@ int main(int argc, char** argv) {
         shot(out, name, "battle-suggest", px);
         tap(&p, HIT_BATTLE_INFO, 0);
     }
+    if (has_hit(&p, HIT_BATTLE_FOE)) {
+        tap(&p, HIT_BATTLE_FOE, 0);
+        shot(out, name, "battle-foe", px);
+        tap(&p, HIT_BATTLE_INFO, 0);
+    }
 
     // BAG: a tapped item shows its description; a drag scrolls the list; the
     // arrow opens the next pocket.
@@ -389,6 +394,9 @@ int main(int argc, char** argv) {
         shot(out, name, "trainer", px);
         tap(&p, HIT_BATTLE_SUGGEST, 0);
         shot(out, name, "trainer-suggest", px);
+        tap(&p, HIT_BATTLE_INFO, 0);
+        tap(&p, HIT_BATTLE_FOE, 0);
+        shot(out, name, "trainer-foe", px);
         tap(&p, HIT_BATTLE_INFO, 0);
 
         // The first one faints (its party HP and the battler's), the trainer picks the third.

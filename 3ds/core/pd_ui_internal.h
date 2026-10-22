@@ -44,6 +44,7 @@ enum {
     HIT_NOTICE_BACK = 2902,
     HIT_BATTLE_SUGGEST = 3000,
     HIT_BATTLE_INFO = 3001,
+    HIT_BATTLE_FOE = 3002, // the foe's card: FOE DETAILS
     HIT_FOE_SLOT = 3010,   // + foe party index
     HIT_OPEN_CARD = 3100,
     HIT_CARD = 3101,

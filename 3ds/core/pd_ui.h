@@ -97,7 +97,7 @@ struct pd_ui {
     enum pd_tab tabBeforeBattle; // the tab a battle took over from
     int battleSlot;              // the bar slot BATTLE shows in, -1 = none
     bool battleWasOn;
-    // BATTLE: INFO (0) or SUGGESTIONS (1); the FOE TEAM's slots seen so far
+    // BATTLE: INFO (0), SUGGESTIONS (1) or FOE DETAILS (2); the FOE TEAM's slots seen so far
     // this battle (a bit each), the one tapped (-1 = follow the battle) and
     // the one shown (set by the draw); what the last read said was out / next.
     int battlePane;

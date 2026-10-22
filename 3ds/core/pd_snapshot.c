@@ -178,6 +178,10 @@ static void decode_battle_mon(const uint8_t* raw, struct pd_battle_mon* b) {
     b->level = raw[0x2A];
     b->maxHp = u16(raw + 0x2C);
     b->status = u32(raw + 0x4C);
+    b->ability = raw[0x20];
+    b->item = u16(raw + 0x2E);
+    for (int i = 0; i < 5; i++) b->stats[i] = u16(raw + 0x02 + 2 * i);
+    for (int i = 0; i < 7; i++) b->stages[i] = raw[0x19 + i] - 6;
 }
 
 static void read_save_fields(struct pd_snapshot* s, const struct pd_config* cfg, pd_read_fn read, void* ctx,
