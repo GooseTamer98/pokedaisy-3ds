@@ -207,6 +207,9 @@ static void act(struct pd_ui* ui, int id) {
         ui->action = PD_ACTION_TOGGLE_FF;
     } else if (id >= HIT_SLOT && id < HIT_SLOT + PD_PARTY_SIZE) {
         ui->summarySlot = id - HIT_SLOT;
+        ui->summaryPage = PD_SUMMARY_MOVES;
+    } else if (id >= HIT_SUMMARY_PAGE && id < HIT_SUMMARY_PAGE + PD_SUMMARY_PAGES) {
+        ui->summaryPage = id - HIT_SUMMARY_PAGE;
     } else if (id == HIT_BACK) {
         pd_ui_back(ui);
     } else if (id == HIT_POCKET_PREV || id == HIT_POCKET_NEXT) {

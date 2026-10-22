@@ -1,6 +1,8 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "pd_romart.h"
+#include "pd_tables.h"
 #include "pd_ui_internal.h"
 
 #define HP_FRAME 0x525252
@@ -137,5 +139,46 @@ void ui_format_money(long v, char* buf, size_t len) {
         snprintf(buf, len, "%ld,%03ld", v / 1000, v % 1000);
     } else {
         snprintf(buf, len, "%ld", v);
+    }
+}
+
+int ui_type_chip(struct pd_canvas* c, int x, int y, int type, const char* suffix) {
+    if (type < 0 || type == PD_TYPE_NONE) return 0;
+    char label[32];
+    snprintf(label, sizeof(label), suffix ? "%s %s" : "%s", pd_type_name(type), suffix ? suffix : "");
+    uint32_t fill = type < 18 && pd_type_colors[type] ? pd_type_colors[type] : PD_MUTED;
+    int w = pd_text_width(label) + 8;
+    pd_round_rect(c, x, y, w, 14, 2, fill);
+    pd_text(c, x + 4, y - 2, label, 0xFFFFFF, PD_NO_SHADOW);
+    return w;
+}
+
+// SummaryBar's bar: the frame's dark line, a dark green trough, the fill in
+// whole pixels.
+void ui_bar(struct pd_canvas* c, int x, int y, int w, long value, long max, uint32_t color) {
+    pd_round_rect(c, x, y, w, 6, 2, 0x5A5A5A);
+    pd_round_rect(c, x + 1, y + 1, w - 2, 4, 1, 0x506858);
+    long f = max > 0 ? value * (w - 2) / max : 0;
+    if (f > w - 2) f = w - 2;
+    if (f > 0) pd_round_rect(c, x + 1, y + 1, (int) f, 4, 1, color);
+}
+
+// The party menu's held-item marker (RomArt.HOLD_ICONS): Mail (121-132, the
+// app's MAIL_ITEMS) has its own, the second 8x8.
+void ui_held_marker(struct pd_canvas* c, const struct pd_game* g, int x, int y, int item) {
+    if (item <= 0) return;
+    const uint8_t* gfx = pd_romart_blob(g, PD_FR_HOLD_GFX);
+    const uint8_t* pal = pd_romart_blob(g, PD_FR_HOLD_PAL);
+    if (!gfx || !pal) return;
+    const uint8_t* tile = gfx + (item >= 121 && item <= 132 ? 32 : 0);
+    for (int py = 0; py < 8; py++) {
+        for (int px = 0; px < 8; px++) {
+            uint8_t b = tile[py * 4 + px / 2];
+            int v = px & 1 ? b >> 4 : b & 0x0F;
+            if (!v) continue;
+            uint16_t col = (uint16_t) (pal[v * 2] | pal[v * 2 + 1] << 8);
+            uint32_t r = col & 0x1F, gg = (col >> 5) & 0x1F, bb = (col >> 10) & 0x1F;
+            pd_fill(c, x + px, y + py, 1, 1, (r << 3 | r >> 2) << 16 | (gg << 3 | gg >> 2) << 8 | (bb << 3 | bb >> 2));
+        }
     }
 }

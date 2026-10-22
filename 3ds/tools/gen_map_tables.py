@@ -34,11 +34,18 @@ BLOBS = [
     "EM_PIC_BRENDAN", "EM_PIC_BRENDAN_PAL", "EM_PIC_MAY", "EM_PIC_MAY_PAL",
     "EM_FONT_NORMAL", "EM_FONT_NORMAL_WIDTHS",
     "CARD_STAR_PAL",
+    # The party menu's held-item marker (RomArt.HOLD_ICONS): an item over Mail, 8x8 each.
+    "FR_HOLD_GFX", "FR_HOLD_PAL",
 ]
+
+# FireRed's bytes that Emerald has too, so they're looked for in both.
+BOTH = {"FR_HOLD_GFX", "FR_HOLD_PAL"}
 
 
 def family(name):
     """Which ROMs a blob is looked for in: PD_BLOB_FIRERED / _EMERALD, or both."""
+    if name in BOTH:
+        return "PD_BLOB_FIRERED | PD_BLOB_EMERALD"
     if name.startswith("FR_"):
         return "PD_BLOB_FIRERED"
     if name.startswith("EM_"):

@@ -36,6 +36,13 @@ extern const unsigned char pd_gender_ratios[];
 extern const int pd_gender_ratios_count;
 extern const unsigned char pd_species_type_table[][2];
 extern const int pd_species_type_table_count;
+// The summary's EXP bar (ExpTables.kt): each species' growth rate (GROWTH_*,
+// 0..5) and gExperienceTables[rate][level], the total EXP that level starts at.
+extern const unsigned char pd_growth_rates[];
+extern const int pd_growth_rates_count;
+extern const int pd_exp_tables[6][101];
+// The type chips' colours (AppColors.typeColors), 0xRRGGBB by type id.
+extern const unsigned int pd_type_colors[];
 
 #define PD_TYPE_NONE 255
 #define PD_SPECIES_EGG 412

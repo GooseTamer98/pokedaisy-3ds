@@ -33,6 +33,9 @@ enum pd_blob {
     PD_EM_PIC_BRENDAN, PD_EM_PIC_BRENDAN_PAL, PD_EM_PIC_MAY, PD_EM_PIC_MAY_PAL,
     PD_EM_FONT_NORMAL, PD_EM_FONT_NORMAL_WIDTHS,
     PD_CARD_STAR_PAL,
+    // The party menu's held-item marker: an item over Mail, 8x8 each (FireRed's
+    // bytes, which Emerald has too).
+    PD_FR_HOLD_GFX, PD_FR_HOLD_PAL,
     PD_BLOB_COUNT,
 };
 

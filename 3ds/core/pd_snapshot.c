@@ -136,6 +136,17 @@ bool pd_decode_party_mon(const uint8_t* raw, struct pd_mon* m) {
     for (int slot = 0; slot < 4; slot++) off[SUBSTRUCT_ORDER[personality % 24][slot]] = slot * 12;
     m->species = u16(block + off[0]);
     if (m->species == 0) return false;
+    m->heldItem = u16(block + off[0] + 2);
+    m->exp = u32(block + off[0] + 4);
+    // EVs: HP, ATTACK, DEFENSE, SPEED, SP. ATK, SP. DEF bytes. Misc: pokerus,
+    // met location, origin, then the IV word (5 bits a stat, HP first).
+    uint32_t ivWord = u32(block + off[3] + 4);
+    for (int i = 0; i < 6; i++) {
+        m->evs[i] = block[off[2] + i];
+        m->ivs[i] = (int) ((ivWord >> (5 * i)) & 0x1F);
+        m->stats[i] = u16(raw + 0x58 + 2 * i);
+    }
+    m->nature = (int) (personality % 25);
     for (int i = 0; i < PD_NUM_MOVES; i++) {
         m->moves[i] = u16(block + off[1] + i * 2);
         m->pp[i] = block[off[1] + 8 + i];

@@ -47,6 +47,7 @@ enum {
     HIT_FOE_SLOT = 3010,   // + foe party index
     HIT_OPEN_CARD = 3100,
     HIT_CARD = 3101,
+    HIT_SUMMARY_PAGE = 3200, // + PD_SUMMARY_*
 };
 
 enum setting_row {
@@ -70,6 +71,14 @@ void ui_notice(struct pd_canvas* c, const char* title, const char* line1, const 
 // A LABEL  VALUE row, the value from ~42% across (OptionLine).
 void ui_row(struct pd_canvas* c, int x, int y, int w, const char* label, const char* value, bool selected);
 void ui_format_money(long v, char* buf, size_t len);
+// A type chip in the type's colour (TypeBadge), with " suffix" if given (a
+// matchup's "2x"); returns its width, 0 for no type.
+int ui_type_chip(struct pd_canvas* c, int x, int y, int type, const char* suffix);
+// The summary's bars (SummaryBar / IvBar): value of max, 6 px tall.
+void ui_bar(struct pd_canvas* c, int x, int y, int w, long value, long max, uint32_t color);
+// The party menu's held-item marker, 8x8 at (x, y); nothing for item 0 or
+// before the ROM has supplied the art.
+void ui_held_marker(struct pd_canvas* c, const struct pd_game* g, int x, int y, int item);
 
 void ui_party_tab(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game* g, const struct pd_snapshot* s);
 void ui_battle_tab(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game* g, const struct pd_snapshot* s);

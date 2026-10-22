@@ -33,6 +33,10 @@ enum pd_tab {
 };
 
 // How the game fills the top screen.
+// The party summary's pages: the moves, IVs / EVs / nature (the app's STATS)
+// and the type matchups (its WEAK TO / RESISTS / IMMUNE TO).
+enum { PD_SUMMARY_MOVES, PD_SUMMARY_STATS, PD_SUMMARY_TYPES, PD_SUMMARY_PAGES };
+
 enum pd_screen_mode {
     PD_SCREEN_PIXEL,   // 1x, pixel for pixel
     PD_SCREEN_SHARP,   // 1.5x (fills the height), sharp bilinear
@@ -101,6 +105,7 @@ struct pd_ui {
     int foeSelected, foeShown;
     int lastFoeActive, lastFoeNext;
     int summarySlot; // party slot whose summary is open, -1 = none
+    int summaryPage; // its MOVES / STATS / TYPES page (PD_SUMMARY_*)
     int bagPocket;   // index into the game's own pocket order
     int bagSelected; // item index in that pocket, -1 = none
     int bagScroll;   // pixels

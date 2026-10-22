@@ -31,6 +31,14 @@ struct pd_mon {
     int moves[PD_NUM_MOVES];
     int pp[PD_NUM_MOVES];
     uint32_t personality;
+    // From the decrypted BoxPokemon, like the app's decodePartyMon: the held
+    // item (Growth), total EXP, IVs / EVs (the game's stat order: HP, ATTACK,
+    // DEFENSE, SPEED, SP. ATK, SP. DEF), the nature (personality % 25) and the
+    // party struct's computed stats (max HP first) - the app's MonStats.
+    int heldItem;
+    uint32_t exp;
+    int ivs[6], evs[6], stats[6];
+    int nature;
 };
 
 struct pd_battle_mon {
