@@ -18,9 +18,11 @@
 #include <mgba-util/vfs.h>
 
 #include "pd_action.h"
+#include "pd_bctl.h"
 #include "pd_game.h"
 #include "pd_mgba.h"
 #include "pd_snapshot.h"
+#include "pd_tables.h"
 
 static void quiet(struct mLogger* l, int c, enum mLogLevel lv, const char* f, va_list a) {
     (void) l, (void) c, (void) lv, (void) f, (void) a;
@@ -98,6 +100,111 @@ static uint32_t call(uint32_t fn, uint32_t a0, uint32_t a1, uint32_t a2) {
     return r0;
 }
 
+// --- BATTLE: the companion's controls on the game's own battle menu ---------
+
+static struct pd_bctl bc;
+
+static void battle_frames(int n) {
+    for (int i = 0; i < n; i++) {
+        core->setKeys(core, pd_bctl_frame(&bc, &game, &io, 0));
+        core->runFrame(core);
+        pd_mgba_frame_done(core);
+    }
+}
+
+// Frames until the menu waits (or limit), pressing A now and then through
+// messages that wait for it; the state then.
+static enum pd_bin wait_menu(int limit, bool mash) {
+    int battler;
+    for (int i = 0; i < limit; i++) {
+        enum pd_bin st = pd_battle_input(&game, io.read, core, &battler);
+        if (!pd_bctl_busy(&bc) && (st == PD_BIN_ACTION || st == PD_BIN_NONE || st == PD_BIN_PARTY)) return st;
+        if (mash && !pd_bctl_busy(&bc) && i % 40 == 39) {
+            core->setKeys(core, 1);
+            core->runFrame(core);
+            pd_mgba_frame_done(core);
+        }
+        battle_frames(1);
+    }
+    return pd_battle_input(&game, io.read, core, &battler);
+}
+
+static void battle_test(uint32_t setupScript) {
+    check(pd_battle_input_known(&game), "battle input: the handlers are known");
+    // setwildbattle CHANSEY 60 (no item); dowildbattle; end - through the
+    // game's script engine, from the field.
+    const uint8_t script[] = { 0xB6, 113, 0, 60, 0, 0, 0xB7, 0x02 };
+    io.write(core, 0x0203FFF4, script, sizeof(script));
+    call(setupScript, 0x0203FFF4, 0, 0);
+    int b0;
+    for (int i = 0; i < 1200 && pd_battle_input(&game, io.read, core, &b0) == PD_BIN_NONE; i++) battle_frames(1);
+    check(pd_battle_input(&game, io.read, core, &b0) != PD_BIN_NONE, "the battle started");
+    enum pd_bin st = wait_menu(4000, true);
+    check(st == PD_BIN_ACTION, "a wild battle: the action menu waits");
+    struct pd_snapshot s;
+    snap(&s);
+    int pp0 = s.battlers[PD_POS_PLAYER_LEFT].pp[0], lead = s.battlers[PD_POS_PLAYER_LEFT].species;
+    printf("     %d vs %d, move 0 PP %d\n", lead, s.battlers[PD_POS_OPPONENT_LEFT].species, pp0);
+
+    // BAG, then back.
+    pd_bctl_action(&bc, 1);
+    int battler;
+    for (int i = 0; i < 200 && pd_battle_input(&game, io.read, core, &battler) != PD_BIN_BAG; i++) battle_frames(1);
+    check(pd_battle_input(&game, io.read, core, &battler) == PD_BIN_BAG, "BAG opens the game's bag");
+    battle_frames(60);
+    pd_bctl_back(&bc);
+    battle_frames(2);
+    for (int i = 0; i < 300 && pd_battle_input(&game, io.read, core, &battler) != PD_BIN_ACTION; i++) {
+        if (i % 60 == 59) pd_bctl_back(&bc);
+        battle_frames(1);
+    }
+    check(pd_battle_input(&game, io.read, core, &battler) == PD_BIN_ACTION, "B: back to the action menu");
+
+    // FIGHT + move 0 in one tap: one PP gone.
+    pd_bctl_move(&bc, 0);
+    int taken = 0;
+    for (int i = 0; i < 600; i++) {
+        battle_frames(1);
+        snap(&s);
+        if (s.battlers[PD_POS_PLAYER_LEFT].pp[0] == pp0 - 1) taken = 1;
+        if (taken) break;
+    }
+    check(taken, "FIGHT + the move: its PP spent");
+    st = wait_menu(3000, true);
+    check(st == PD_BIN_ACTION, "the next turn's menu");
+
+    // POKéMON: party slot 2 sent in.
+    snap(&s);
+    int want = -1;
+    for (int i = 1; i < s.partyCount && want < 0; i++) {
+        if (s.party[i].hp > 0 && s.party[i].species != PD_SPECIES_EGG && s.party[i].species != lead) want = i;
+    }
+    pd_bctl_switch(&bc, s.party[want].personality);
+    int sent = 0;
+    for (int i = 0; i < 1500 && !sent; i++) {
+        battle_frames(1);
+        struct pd_snapshot t;
+        snap(&t);
+        sent = t.battlers[PD_POS_PLAYER_LEFT].species == s.party[want].species;
+    }
+    printf("     switch to slot %d (%d): %s\n", want, s.party[want].species, sent ? "in" : "not in");
+    check(sent, "POKéMON: the picked one is out");
+    st = wait_menu(3000, true);
+    check(st == PD_BIN_ACTION, "the next turn's menu");
+
+    // RUN until it works (a wild battle can refuse): the battle ends.
+    bool ended = false;
+    for (int tries = 0; tries < 5 && !ended; tries++) {
+        pd_bctl_action(&bc, 3);
+        for (int i = 0; i < 900 && !ended; i++) {
+            battle_frames(1);
+            ended = pd_battle_input(&game, io.read, core, &battler) == PD_BIN_NONE;
+        }
+        if (!ended) wait_menu(2000, true);
+    }
+    check(ended, "RUN: the battle ends");
+}
+
 int main(int argc, char** argv) {
     if (argc < 3) {
         fprintf(stderr, "usage: %s <rom.gba> <fixture dir>\n", argv[0]);
@@ -131,6 +238,20 @@ int main(int argc, char** argv) {
     pd_mgba_reset();
     frames(60);
 
+    if (argc > 3 && !strcmp(argv[3], "battle")) {
+        uint32_t lockFn = game.kind == PD_GAME_EMERALD ? 0x08098E6C
+            : !strcmp(game.code, "BPGE") && game.revision == 0 ? 0x08069958 : 0x0806996C;
+        if (call(lockFn, 0, 0, 0)) {
+            uint8_t zero = 0;
+            io.write(core, 0x03000F9C, &zero, 1);
+            io.write(core, 0x0203ADFA, &zero, 1);
+            frames(2);
+        }
+        battle_test(game.kind == PD_GAME_EMERALD ? 0x08098EF8
+                    : !strcmp(game.code, "BPGE") && game.revision == 0 ? 0x08069AE4 : 0x08069AF8);
+        printf("%d failure(s)\n", failures);
+        return failures ? 1 : 0;
+    }
     check(pd_act_supported(&game), "the ROM's code is where the tables say");
     check(pd_act_can_pc(&game), "PC code found");
     check(pd_act_can_fly(&game), "FLY code found");

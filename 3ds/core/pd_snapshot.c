@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "pd_bctl.h"
 #include "pd_tables.h"
 
 #define MON_SIZE 100
@@ -219,6 +220,7 @@ void pd_snapshot_read(struct pd_snapshot* s, const struct pd_game* g, pd_read_fn
     uint8_t flags = 0;
     read(ctx, cfg->gMain + 0x439, &flags, 1);
     s->inBattle = (flags & 0x02) != 0;
+    s->inputState = pd_battle_input(g, read, ctx, &s->inputBattler);
     if (s->inBattle) {
         uint32_t type = 0;
         read_u32(read, ctx, cfg->battleTypeFlags, &type);

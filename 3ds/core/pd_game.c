@@ -38,6 +38,22 @@
     .battleStructPtr = 0x02023FE8,     \
     .monToSwitchIntoOff = 0x5C
 
+// Battle input: pokefirered's battle_controller_player.c handlers, rev 1 (and
+// LeafGreen rev 1) and LeafGreen rev 0 (each the map's first of the name);
+// the cursors and gPartyMenu sit at the same RAM in all three.
+#define FIRERED_INPUT_RAM                     \
+    .battlerControllerFuncs = 0x03004FE0,      \
+    .actionCursor = 0x02023FF8,               \
+    .moveCursor = 0x02023FFC,                 \
+    .partyMenu = 0x0203B0A0
+#define FIRERED_REV1_INPUT                    \
+    FIRERED_INPUT_RAM,                        \
+    .inputAction = 0x0802E44C,                \
+    .inputMove = 0x0802EA24,                  \
+    .inputTarget = 0x0802E688,                \
+    .inputItem = 0x08030750,                  \
+    .inputParty = 0x08030698
+
 // TRAINER_CARD_FIRERED: retail FireRed rev 1 and LeafGreen (the app has no
 // card for FireRed rev 0).
 #define FIRERED_CARD                \
@@ -56,6 +72,7 @@ static const struct pd_config FIRERED_REV1 = {
     FIRERED_RAM,
     FIRERED_REV1_FOES,
     FIRERED_CARD,
+    FIRERED_REV1_INPUT,
     .items = 0x083DB098,
     .itemIcons = 0x083D4304,
     .monIconTable = 0x083D3810,
@@ -102,6 +119,12 @@ static const struct pd_config FIRERED_REV0_RAM_ONLY = {
 static const struct pd_config LEAFGREEN_REV0 = {
     FIRERED_RAM,
     FIRERED_CARD,
+    FIRERED_INPUT_RAM,
+    .inputAction = 0x0802E438,
+    .inputMove = 0x0802EA10,
+    .inputTarget = 0x0802E674,
+    .inputItem = 0x0803073C,
+    .inputParty = 0x08030684,
     .items = 0x083DAE64,
     .itemIcons = 0x083D40D0,
     .monIconTable = 0x083D35DC,
@@ -133,6 +156,7 @@ static const struct pd_config LEAFGREEN_REV1 = {
     FIRERED_RAM,
     FIRERED_REV1_FOES,
     FIRERED_CARD,
+    FIRERED_REV1_INPUT,
     .items = 0x083DAED4,
     .itemIcons = 0x083D4140,
     .monIconTable = 0x083D364C,
@@ -185,6 +209,15 @@ static const struct pd_config EMERALD = {
     // Emerald's item.c: Items, Poke Balls, TMs & HMs, Berries, Key Items.
     .bagPockets = 0x02039DD8,
     .items = 0x085839A0,
+    .battlerControllerFuncs = 0x03005D60,
+    .inputAction = 0x08057588,
+    .inputMove = 0x08057BFC,
+    .inputTarget = 0x08057824,
+    .inputItem = 0x080598E0,
+    .inputParty = 0x08059828,
+    .actionCursor = 0x020244AC,
+    .moveCursor = 0x020244B0,
+    .partyMenu = 0x0203CEC8,
     .itemIcons = 0x08614410,
     .bagOrder = { PD_POCKET_ITEMS, PD_POCKET_BALLS, PD_POCKET_TMHM, PD_POCKET_BERRIES, PD_POCKET_KEY },
     .dexEntries = 0x0856B5B0,

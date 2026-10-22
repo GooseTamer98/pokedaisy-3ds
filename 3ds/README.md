@@ -33,7 +33,15 @@ unknown. Target the **New 3DS / New 3DS XL / New 2DS XL** first; the original
     ♂ / ♀, level, HP bar, status) in the app's FireRed party palette; tap one
     for its summary (moves, type, PP); **TAKE** there puts its held item back
     in the bag (same games as BAG's USE).
-  - **BATTLE**: opens by itself in a battle and goes back after it. **INFO**:
+  - **BATTLE**: opens by itself in a battle and goes back after it. On retail
+    English FireRed rev 1, LeafGreen and Emerald it opens on the app's
+    **CONTROLS**: a big FIGHT (with your Pokémon's icon), BAG, RUN and
+    POKéMON. FIGHT opens the move grid (each move with its verdict on the
+    foe), POKéMON the party (OUT, BEST = SUGGESTIONS' top pick); a pick
+    presses the game's own menu for you - the cursor written where the game
+    keeps it and A pressed once, a switch steered through the game's party
+    menu - while your own buttons wait. With the game's bag or party screen
+    up, BACK; INFO and SUGGESTIONS sit above the buttons. **INFO**:
     the foe and you (with the game's own party icons, read from your ROM),
     your moves with the app's verdicts (SUPER 2x / NEUTRAL 1x / RESISTED 1/2x /
     IMMUNE 0x / STATUS). **SUGGESTIONS**: your party's three best picks against
@@ -144,7 +152,7 @@ Everything runs in Docker, so it works the same on a Mac or a cloud session.
 cd 3ds
 make decomps       # pret's FireRed rev 1 / Emerald, = retail (below; optional)
 make preview       # the companion from the RAM fixtures -> build/shots/*.png
-make act-test      # USE / GIVE / TAKE / PC / FLY on the decomp ROMs (host mGBA, cmake)
+make act-test      # USE / GIVE / TAKE / PC / FLY and the BATTLE controls on the decomp ROMs (host mGBA)
 make 3ds           # ctr/pokedaisy.3dsx (devkitpro/devkitarm image)
 make fixture-roms  # build/fixture-*.gba test ROMs (below)
 make azahar-test   # the .3dsx in the Azahar 3DS emulator -> build/azahar/*.png
@@ -175,7 +183,11 @@ make tables        # regenerate core/*_gen.c and ctr/icon.png from the app
   from the submodule, a fixture's RAM loaded over the running game, then a
   Potion's party pick and use, TAKE and GIVE, a Repel, FLY (landing in the
   town) and the PC (reaching the storage screen) through `core/pd_action.c`
-  and `mgba/pd_mgba.c` - the same code the 3DS runs - each checked in RAM. The
+  and `mgba/pd_mgba.c` - the same code the 3DS runs - each checked in RAM.
+  `battle` runs start a wild battle with the game's own script commands
+  (`setwildbattle` / `dowildbattle`) and drive its menu through
+  `core/pd_bctl.c`: BAG and back, FIGHT + a move (its PP spent), a switch (the
+  picked one out), RUN (the battle over). The
   preview only draws those screens, with the game's answers filled in by hand
   (`-act-*` shots).
 - **`make decomps`** (`test/build_decomps.sh`; git, a C compiler, libpng and

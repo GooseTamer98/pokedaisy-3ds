@@ -60,7 +60,10 @@ void pd_ui_update(struct pd_ui* ui, const struct pd_snapshot* s) {
         ui->tab = PD_TAB_BATTLE;
         ui->summarySlot = -1;
         ui->overlay = PD_OVERLAY_NONE;
-        ui->battlePane = 0;
+        // The app's controls first, where the game's battle menu can be driven.
+        // (the tab falls back to INFO where the game has none).
+        ui->battlePane = PD_BATTLE_CONTROLS;
+        ui->battleChoose = 0;
         ui->foeSeen = 0;
         ui->foeSelected = -1;
         ui->lastFoeActive = ui->lastFoeNext = -1;
@@ -325,8 +328,13 @@ bool pd_ui_back(struct pd_ui* ui) {
         ui->tab = PD_TAB_SETTINGS;
         return true;
     }
-    if (ui->tab == PD_TAB_BATTLE && ui->battlePane) {
-        ui->battlePane = 0;
+    if (ui->tab == PD_TAB_BATTLE && ui->battleChoose) {
+        ui->battleChoose = 0;
+        return true;
+    }
+    bool controls = ui->game && pd_battle_input_known(ui->game);
+    if (ui->tab == PD_TAB_BATTLE && ui->battlePane != (controls ? PD_BATTLE_CONTROLS : 0)) {
+        ui->battlePane = controls ? PD_BATTLE_CONTROLS : 0;
         return true;
     }
     if (ui->tab == PD_TAB_BATTLE && ui->foeSelected >= 0) {

@@ -82,6 +82,9 @@ struct pd_snapshot {
     int partyCount;
     struct pd_mon party[PD_PARTY_SIZE];
     bool inBattle, isDouble, isTrainer;
+    // Which battle menu waits for the player (enum pd_bin, pd_bctl.h) and
+    // whose; 0 = no battle input for this game.
+    int inputState, inputBattler;
     struct pd_battle_mon battlers[4]; // by battler position; species 0 = none
     // The FOE TEAM (trainer battles): gEnemyParty in order, the one out
     // (gBattlerPartyIndexes) and the one the trainer is about to send in -

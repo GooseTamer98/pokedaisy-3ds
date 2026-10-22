@@ -64,6 +64,12 @@ enum {
     HIT_ACT_SLOT = 3410,     // + party slot
     HIT_ACT_MOVE = 3420,     // + move slot
     HIT_FLY_LIST = 3499,
+    HIT_BC_FIGHT = 3600,     // + action (FIGHT, BAG, POKéMON, RUN)
+    HIT_BC_CANCEL = 3604,
+    HIT_BC_BACK = 3605,      // B on the game's bag / party screen
+    HIT_BC_CONTROLS = 3606,  // the bar's way back to CONTROLS
+    HIT_BC_MOVE = 3610,      // + move slot
+    HIT_BC_SLOT = 3620,      // + party slot
     HIT_FLY_TOWN = 3500,     // + town (PD_FLY_MAX)
 };
 

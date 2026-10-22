@@ -14,6 +14,7 @@
 #include <stdbool.h>
 
 #include "pd_action.h"
+#include "pd_bctl.h"
 #include "pd_canvas.h"
 #include "pd_game.h"
 #include "pd_snapshot.h"
@@ -94,6 +95,8 @@ struct pd_hit {
     bool scroll; // part of a list that a drag scrolls
 };
 
+#define PD_BATTLE_CONTROLS 3
+
 enum { PD_BAG_ALL, PD_BAG_FAVORITES, PD_BAG_POCKET };
 enum pd_bag_sort { PD_SORT_DEFAULT, PD_SORT_NAME, PD_SORT_TYPE, PD_SORT_COUNT, PD_SORTS };
 
@@ -120,7 +123,11 @@ struct pd_ui {
     // BATTLE: INFO (0), SUGGESTIONS (1) or FOE DETAILS (2); the FOE TEAM's slots seen so far
     // this battle (a bit each), the one tapped (-1 = follow the battle) and
     // the one shown (set by the draw); what the last read said was out / next.
-    int battlePane;
+    int battlePane; // PD_BATTLE_CONTROLS (3): FIGHT / BAG / POKéMON / RUN, the app's default
+    // The CONTROLS' own move grid (1) or party pane (2) over the action menu,
+    // and the presses driving the game's menu (run by the host before each frame).
+    int battleChoose;
+    struct pd_bctl bctl;
     unsigned foeSeen;
     int foeSelected, foeShown;
     int lastFoeActive, lastFoeNext;

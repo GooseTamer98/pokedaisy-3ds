@@ -1,5 +1,11 @@
-// BATTLE: INFO (BattleInfoScreen.kt), SUGGESTIONS (SuggestionsScreen.kt) and
-// FOE DETAILS.
+// BATTLE: CONTROLS (BattleControlsScreen.kt), INFO (BattleInfoScreen.kt),
+// SUGGESTIONS (SuggestionsScreen.kt) and FOE DETAILS.
+//
+// CONTROLS, where the game's battle menu can be driven (pd_bctl.c): INFO and
+// SUGGESTIONS over a big FIGHT and BAG / RUN / POKéMON; FIGHT opens the move
+// grid (each move with its verdict), POKéMON the party (OUT, BEST), and a
+// pick presses the game's own menu. While the game's bag or party screen is
+// up, BACK; otherwise it waits for the player's turn.
 //
 // INFO: one white window split by rules - the foe, you, then your moves with
 // their plain-words verdicts against the foe. Your card carries the app's
@@ -522,6 +528,137 @@ static void foe_details(struct pd_canvas* c, const struct pd_game* g, const stru
     }
 }
 
+// --- CONTROLS (BattleControlsScreen) -------------------------------------------
+
+#define FIGHT_RED 0xE8483C
+#define FIGHT_RED_DARK 0xA82820
+#define BAG_ORANGE 0xE0A030
+#define BAG_ORANGE_DARK 0xA87018
+#define RUN_BLUE 0x4890D8
+#define RUN_BLUE_DARK 0x2860A0
+#define MON_GREEN 0x58A840
+#define MON_GREEN_DARK 0x307020
+#define DISABLED_GREY 0xB0B0B8
+#define DISABLED_DARK 0x80808C
+
+// A button that presses the game's menu: greyed while a pick is under way.
+static void game_button(struct pd_ui* ui, struct pd_canvas* c, int x, int y, int w, int h, const char* label,
+                        uint32_t fill, uint32_t dark, int id, bool enabled) {
+    if (enabled) {
+        nav_button(ui, c, x, y, w, h, label, fill, dark, id);
+        return;
+    }
+    struct pd_layer frame = { DISABLED_DARK, 2 };
+    pd_layered_box(c, x, y, w, h, 3, &frame, 1, DISABLED_GREY);
+    pd_text(c, x + (w - pd_text_width(label)) / 2, pd_text_y(y, h), label, 0xFFFFFF, DISABLED_DARK);
+}
+
+static void centred_note(struct pd_canvas* c, int ix, int iy, int iw, int ih, const char* text) {
+    pd_text(c, ix + (iw - pd_text_width(text)) / 2, iy + ih / 2 - LINE / 2, text, PD_MUTED, PD_MUTED_SHADOW);
+}
+
+// The party pane (PartyPicker): the game's party in its order, OUT on the one
+// in battle, BEST on SUGGESTIONS' top pick; a tap sends that one in.
+static void party_pane(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game* g, const struct pd_snapshot* s,
+                       const struct mon_view* foe, int ix, int iy, int iw, int ih, bool enabled) {
+    struct pick picks[PD_PARTY_SIZE];
+    int n = foe ? rank(s, foe, picks) : 0;
+    const struct pd_mon* best = NULL;
+    for (int i = 0; i < n && !best; i++) {
+        if (!is_out(picks[i].mon, s)) best = picks[i].mon;
+    }
+    int rowH = (ih - 26) / 6;
+    if (rowH > 26) rowH = 26;
+    pd_text(c, ix, iy, "Choose a POKéMON.", PD_LABEL, PD_LABEL_SHADOW);
+    int y = iy + LINE + 2;
+    char buf[24];
+    for (int i = 0; i < s->partyCount; i++, y += rowH) {
+        const struct pd_mon* m = &s->party[i];
+        bool out = is_out(m, s), egg = m->species == PD_SPECIES_EGG;
+        bool ok = enabled && !out && !egg && m->hp > 0;
+        if (ok && ui->pressedId == HIT_BC_SLOT + i) pd_fill(c, ix - 2, y, iw + 4, rowH, PD_ROW_SELECTED);
+        pd_clip(c, ix - 2, y, iw + 4, rowH);
+        pd_draw_mon_icon(c, g, m->species, ix - 2, y + rowH / 2 - 22, m->hp == 0 || egg);
+        pd_unclip(c);
+        int ty = pd_text_y(y, rowH);
+        uint32_t col = ok || out ? PD_LABEL : PD_MUTED, sh = ok || out ? PD_LABEL_SHADOW : PD_MUTED_SHADOW;
+        pd_text_fit(c, ix + 32, ty, 86, m->nickname, col, sh);
+        if (!egg) {
+            snprintf(buf, sizeof(buf), "Lv%d", m->level);
+            pd_text(c, ix + 122, ty, buf, col, sh);
+            ui_hp_bar(c, ix + 160, y + rowH / 2 - 3, 60, m->hp, m->maxHp);
+        }
+        if (out) pill(c, ix + iw - 34, ty, "OUT", OUT_GREEN);
+        else if (m == best) pill(c, ix + iw - 38, ty, "BEST", VERDICT_GOOD);
+        else if (m->hp == 0 && !egg) pill(c, ix + iw - 50, ty, "FAINTED", VERDICT_GREY);
+        if (ok) ui_add_hit(ui, ix - 2, y, iw + 4, rowH, HIT_BC_SLOT + i);
+    }
+}
+
+static void controls(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game* g, const struct pd_snapshot* s,
+                     const struct mon_view* foe, const struct mon_view* you, int ix, int iy, int iw, int ih) {
+    bool enabled = !pd_bctl_busy(&ui->bctl);
+    int state = s->inputState;
+    if (state != PD_BIN_ACTION && state != PD_BIN_MOVE) ui->battleChoose = state == PD_BIN_PARTY ? 2 : 0;
+    // The party pane takes the window's whole height (the app's).
+    if (state == PD_BIN_PARTY || (state == PD_BIN_ACTION && ui->battleChoose == 2)) {
+        party_pane(ui, c, g, s, foe, ix, iy, iw, ih - 24, enabled);
+        if (state == PD_BIN_PARTY) game_button(ui, c, ix + iw - 80, iy + ih - 22, 80, 22, "BACK", RUN_BLUE, RUN_BLUE_DARK, HIT_BC_BACK, enabled);
+        else game_button(ui, c, ix + iw - 80, iy + ih - 22, 80, 22, "CANCEL", RUN_BLUE, RUN_BLUE_DARK, HIT_BC_CANCEL, true);
+        return;
+    }
+    // INFO / SUGGESTIONS over the menu: our own panes, never the game's.
+    int tw = 70, sw = pd_text_width("SUGGESTIONS") + 16;
+    int tx = ix + (iw - tw - sw - 8) / 2;
+    nav_button(ui, c, tx, iy, tw, 22, "INFO", INFO_PURPLE, INFO_PURPLE_DARK, HIT_BATTLE_INFO);
+    nav_button(ui, c, tx + tw + 8, iy, sw, 22, "SUGGESTIONS", SUGGEST_GOLD, SUGGEST_GOLD_DARK, HIT_BATTLE_SUGGEST);
+    int y = iy + 28, h = ih - 28;
+    if (state == PD_BIN_MOVE || (state == PD_BIN_ACTION && ui->battleChoose == 1)) {
+        // The move grid: each with its verdict on the foe; CANCEL closes ours,
+        // or backs out of the game's move screen.
+        int cw = (iw - 6) / 2, chh = (h - 30) / 2;
+        for (int i = 0; i < PD_NUM_MOVES; i++) {
+            int cx = ix + (i % 2) * (cw + 6), cy = y + (i / 2) * (chh + 4);
+            int move = you->moves[i];
+            bool ok = enabled && move && you->pp[i] > 0;
+            move_cell(c, cx, cy, cw, chh, move, you->pp[i], foe, false);
+            if (move) {
+                int type = pd_move_type(move);
+                uint32_t frame = type < 18 && pd_type_colors[type] ? pd_type_colors[type] : PD_MUTED;
+                pd_fill(c, cx, cy + 2, 3, chh - 4, frame);
+            }
+            if (ui->pressedId == HIT_BC_MOVE + i && ok) pd_dim(c, 0x40);
+            if (ok) ui_add_hit(ui, cx, cy, cw, chh, HIT_BC_MOVE + i);
+        }
+        game_button(ui, c, ix + iw - 80, y + h - 22, 80, 22, "CANCEL", RUN_BLUE, RUN_BLUE_DARK,
+                    state == PD_BIN_MOVE ? HIT_BC_BACK : HIT_BC_CANCEL, enabled || state != PD_BIN_MOVE);
+        return;
+    }
+    if (state == PD_BIN_BAG) {
+        centred_note(c, ix, y, iw, h - 30, "The game's bag is open.");
+        game_button(ui, c, ix + (iw - 80) / 2, y + h - 26, 80, 24, "BACK", RUN_BLUE, RUN_BLUE_DARK, HIT_BC_BACK, enabled);
+        return;
+    }
+    if (state != PD_BIN_ACTION) {
+        centred_note(c, ix, y, iw, h, state == PD_BIN_TARGET ? "Confirming target..." : "Waiting for your turn...");
+        return;
+    }
+    // Platinum's layout: a big FIGHT up top with the battler's icon, BAG and
+    // POKéMON in the bottom corners, RUN between them a little lower.
+    int fw = iw * 76 / 100, fh = h * 52 / 100;
+    int fx = ix + (iw - fw) / 2;
+    game_button(ui, c, fx, y, fw, fh, "", FIGHT_RED, FIGHT_RED_DARK, HIT_BC_FIGHT, enabled);
+    int lw = pd_text_width("FIGHT");
+    int gx = fx + (fw - lw - PD_ICON - 6) / 2;
+    pd_draw_mon_icon(c, g, you->species, gx, y + fh / 2 - 20, false);
+    pd_text(c, gx + PD_ICON + 6, pd_text_y(y, fh), "FIGHT", 0xFFFFFF, enabled ? FIGHT_RED_DARK : DISABLED_DARK);
+    int by = y + fh + 8, bh = h - fh - 8 - 8, bw = (iw - 16) / 3;
+    game_button(ui, c, ix, by, bw, bh, "BAG", BAG_ORANGE, BAG_ORANGE_DARK, HIT_BC_FIGHT + 1, enabled);
+    game_button(ui, c, ix + bw + 8, by + 8, bw, bh, "RUN", RUN_BLUE, RUN_BLUE_DARK, HIT_BC_FIGHT + 3,
+                enabled && !s->isTrainer);
+    game_button(ui, c, ix + 2 * (bw + 8), by, bw, bh, "POKéMON", MON_GREEN, MON_GREEN_DARK, HIT_BC_FIGHT + 2, enabled);
+}
+
 void ui_battle_tab(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game* g, const struct pd_snapshot* s) {
     const struct pd_battle_mon* youB = &s->battlers[PD_POS_PLAYER_LEFT];
     if (!s->inBattle || !youB->species) {
@@ -546,20 +683,66 @@ void ui_battle_tab(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game* 
     int h = barY - 4 - CONTENT_Y;
     int f = pd_title_box(c, x, CONTENT_Y, w, h, PD_TITLE_FILL);
     int ix = x + f + 4, iy = CONTENT_Y + f + 2, iw = w - 2 * (f + 4), ih = h - 2 * (f + 2);
-    if (ui->battlePane == 1) suggestions(c, g, s, foe, foeState, ix, iy, iw, ih);
+    bool controlsKnown = pd_battle_input_known(g);
+    if (ui->battlePane == PD_BATTLE_CONTROLS && !controlsKnown) ui->battlePane = 0;
+    if (ui->battlePane == PD_BATTLE_CONTROLS) controls(ui, c, g, s, foe, &you, ix, iy, iw, ih);
+    else if (ui->battlePane == 1) suggestions(c, g, s, foe, foeState, ix, iy, iw, ih);
     else if (ui->battlePane == 2) foe_details(c, g, foe, &you, ix, iy, iw, ih);
     else info(ui, c, g, s, foe, foeState, &you, ix, iy, iw, ih);
 
-    // The bar: the other pane's button, then the FOE TEAM.
-    // One width for both, so the same spot flips back.
-    const char* label = ui->battlePane ? "INFO" : "SUGGESTIONS";
-    int bw = pd_text_width("SUGGESTIONS") + 20;
-    if (ui->battlePane) nav_button(ui, c, x, barY, bw, BAR_H, label, INFO_PURPLE, INFO_PURPLE_DARK, HIT_BATTLE_INFO);
-    else nav_button(ui, c, x, barY, bw, BAR_H, label, SUGGEST_GOLD, SUGGEST_GOLD_DARK, HIT_BATTLE_SUGGEST);
-    foe_strip(ui, c, g, s, x + bw + 8, barY, x + w);
+    // The bar: BACK to the controls (where the game has them), the other
+    // pane's button, then the FOE TEAM. One width for INFO / SUGGESTIONS, so
+    // the same spot flips back.
+    int bx = x;
+    if (controlsKnown && ui->battlePane != PD_BATTLE_CONTROLS) {
+        nav_button(ui, c, bx, barY, 50, BAR_H, "BACK", RUN_BLUE, RUN_BLUE_DARK, HIT_BC_CONTROLS);
+        bx += 50 + 6;
+    }
+    if (ui->battlePane != PD_BATTLE_CONTROLS) {
+        const char* label = ui->battlePane ? "INFO" : "SUGGESTIONS";
+        int bw = pd_text_width("SUGGESTIONS") + 20;
+        if (ui->battlePane) nav_button(ui, c, bx, barY, bw, BAR_H, label, INFO_PURPLE, INFO_PURPLE_DARK, HIT_BATTLE_INFO);
+        else nav_button(ui, c, bx, barY, bw, BAR_H, label, SUGGEST_GOLD, SUGGEST_GOLD_DARK, HIT_BATTLE_SUGGEST);
+        bx += bw + 8;
+    }
+    foe_strip(ui, c, g, s, bx, barY, x + w);
 }
 
 bool ui_battle_act(struct pd_ui* ui, int id) {
+    const struct pd_snapshot* s = ui->snap;
+    if (id == HIT_BC_CONTROLS) {
+        ui->battlePane = PD_BATTLE_CONTROLS;
+        return true;
+    }
+    if (id == HIT_BC_CANCEL) {
+        ui->battleChoose = 0;
+        return true;
+    }
+    if (id == HIT_BC_BACK) {
+        pd_bctl_back(&ui->bctl);
+        ui->battleChoose = 0;
+        return true;
+    }
+    if (id >= HIT_BC_FIGHT && id < HIT_BC_FIGHT + 4) {
+        int action = id - HIT_BC_FIGHT;
+        // FIGHT and POKéMON open our own grid / party first (the app's): the
+        // game's screen only opens once a move or a Pokémon is picked.
+        if (action == 0) ui->battleChoose = 1;
+        else if (action == 2) ui->battleChoose = 2;
+        else pd_bctl_action(&ui->bctl, action);
+        return true;
+    }
+    if (id >= HIT_BC_MOVE && id < HIT_BC_MOVE + PD_NUM_MOVES) {
+        pd_bctl_move(&ui->bctl, id - HIT_BC_MOVE);
+        ui->battleChoose = 0;
+        return true;
+    }
+    if (id >= HIT_BC_SLOT && id < HIT_BC_SLOT + PD_PARTY_SIZE) {
+        int slot = id - HIT_BC_SLOT;
+        if (s && slot < s->partyCount) pd_bctl_switch(&ui->bctl, s->party[slot].personality);
+        ui->battleChoose = 0;
+        return true;
+    }
     if (id == HIT_BATTLE_SUGGEST || id == HIT_BATTLE_INFO || id == HIT_BATTLE_FOE) {
         ui->battlePane = id == HIT_BATTLE_SUGGEST ? 1 : id == HIT_BATTLE_FOE ? 2 : 0;
         return true;

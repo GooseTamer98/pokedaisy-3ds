@@ -124,8 +124,10 @@ azahar-battle-test: 3ds fixture-roms
 # The game actions (core/pd_action.c, mgba/pd_mgba.c) for real: each decomp ROM
 # booted in a host libmgba (built here from the submodule, GBA only), a RAM
 # fixture loaded over the running game, then USE / GIVE / TAKE / a Repel /
-# FLY / the PC through the game's own functions, checked in RAM
-# (desktop/pd_act_test.c). Needs `make decomps` and cmake.
+# FLY / the PC through the game's own functions, checked in RAM; then
+# (`battle`) a wild battle started by the game's own script and the BATTLE
+# controls (core/pd_bctl.c) on its menus: BAG and back, FIGHT + a move, a
+# switch, RUN (desktop/pd_act_test.c). Needs `make decomps` and cmake.
 MGBA_HOST := $(BUILD)/mgba-host
 MGBA := $(REPO)/third_party/mgba
 $(MGBA_HOST)/libmgba.a:
@@ -146,6 +148,10 @@ act-test: $(BUILD)/pd_act_test
 	$(BUILD)/pd_act_test $(DECOMP_DIR)/pokefirered/pokeleafgreen.gba $(FIXTURES)/leafgreen_rev0
 	$(BUILD)/pd_act_test $(DECOMP_DIR)/pokefirered/pokeleafgreen_rev1.gba $(FIXTURES)/leafgreen_rev1
 	$(BUILD)/pd_act_test $(DECOMP_DIR)/pokeemerald/pokeemerald.gba $(FIXTURES)/emerald_vanilla
+	$(BUILD)/pd_act_test $(DECOMP_DIR)/pokefirered/pokefirered_rev1.gba $(FIXTURES)/firered_vanilla battle
+	$(BUILD)/pd_act_test $(DECOMP_DIR)/pokefirered/pokeleafgreen.gba $(FIXTURES)/leafgreen_rev0 battle
+	$(BUILD)/pd_act_test $(DECOMP_DIR)/pokefirered/pokeleafgreen_rev1.gba $(FIXTURES)/leafgreen_rev1 battle
+	$(BUILD)/pd_act_test $(DECOMP_DIR)/pokeemerald/pokeemerald.gba $(FIXTURES)/emerald_vanilla battle
 
 clean:
 	rm -rf $(BUILD) ctr/build ctr/pokedaisy.3dsx

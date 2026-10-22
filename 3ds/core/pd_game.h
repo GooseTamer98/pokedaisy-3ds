@@ -50,6 +50,16 @@ struct pd_config {
     // sItemIconTable: {LZ77 tiles, LZ77 palette} per item, 24x24 (DecompIconSource.fetchItem).
     uint32_t itemIcons;
 
+    // Battle input (the app's NativeConfig / BattleInputController):
+    // gBattlerControllerFuncs (a function per battler) and the player's
+    // controller handlers it holds while a menu waits - the action menu, the
+    // moves, the target, the bag, the party; gActionSelectionCursor /
+    // gMoveSelectionCursor (a cell per battler) and gPartyMenu (slotId +9).
+    // 0 = no battle input.
+    uint32_t battlerControllerFuncs;
+    uint32_t inputAction, inputMove, inputTarget, inputItem, inputParty;
+    uint32_t actionCursor, moveCursor, partyMenu;
+
     // POKéDEX (the app's PokedexTables): ROM tables ...
     uint32_t dexEntries;       // gPokedexEntries, by national number
     uint32_t dexEntryStride;

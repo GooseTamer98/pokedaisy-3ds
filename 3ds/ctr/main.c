@@ -483,12 +483,17 @@ static bool run_game(const char* file) {
         }
         uint32_t keys = gba_keys(held);
         int frames = ff ? settings.ffSpeed : 1;
+        bool picking = pd_bctl_busy(&ui.bctl);
         for (int i = 0; i < frames; i++) {
-            core->setKeys(core, keys);
+            // The BATTLE tab's picks press the game's own menu (pd_bctl.c);
+            // while one presses or steers, the player's keys wait.
+            core->setKeys(core, pd_bctl_frame(&ui.bctl, &game, &io, (uint16_t) keys));
             core->runFrame(core);
             pd_mgba_frame_done(core);
             frame++;
         }
+
+        if (picking != pd_bctl_busy(&ui.bctl)) redraw = true;
 
         // A request from the companion, run now that the frame is done; its
         // answer (and what it changed) shows at once.

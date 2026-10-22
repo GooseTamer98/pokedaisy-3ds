@@ -113,7 +113,12 @@ run on a real 3DS yet. Its tabs: PARTY, BAG, MAP, GUIDE, POKéDEX (BATTLE takes 
 SUGGESTIONS + the FOE TEAM, ported from BattleInfoScreen / SuggestionsScreen / CompanionScreen's foe state), and
 SETTINGS (screen mode, FF, one save state slot - states never carry the save data), with the TRAINER CARD
 under it (`pd_card`: its renders match `TrainerCardTest`'s pinned CRCs - `make preview` prints them; keep it
-so). ROM art (`pd_romart`) is one scan per ROM for every blob (map + card), done while the game loads. No retail trainer-battle
+so). Game actions (retail English FireRed rev 1, LeafGreen rev 0 / 1, Emerald): BAG's USE / GIVE / PC, the summary's TAKE,
+MAP's FLY (`core/pd_action.c`, FieldItems.kt / Pc.kt / Fly.kt's tables - keep in sync) and BATTLE's CONTROLS (`core/pd_bctl.c`,
+BattleInputController's Gen 3 picks: cursor written + one A, the switch steered by gPartyMenu.slotId) call / press the game
+between frames through `mgba/pd_mgba.c` (the app's pk_call). `make act-test` runs every one for real on the decomp ROMs in a
+host libmgba with a fixture's RAM loaded over the running game (firered_vanilla was dumped mid quest-log recap: the test
+checks NOT NOW, then clears it); keep it passing. ROM art (`pd_romart`) is one scan per ROM for every blob (map + card), done while the game loads. No retail trainer-battle
 fixture exists, so `make preview` builds one from `emerald_de_battle` (party structs copied into gEnemyParty)
 and keeps it in `3ds/build/fixtures/emerald_trainer` for `make azahar-battle-test`. mGBA's 3DS build
 loads every ROM into one fixed buffer, so per-ROM caches key on `pd_rom_id()`, never the ROM pointer. The GPU path

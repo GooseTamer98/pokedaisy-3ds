@@ -12,6 +12,7 @@
 #include <string.h>
 
 #include "../core/pd_action.h"
+#include "../core/pd_bctl.h"
 #include "../core/pd_canvas.h"
 #include "../core/pd_card.h"
 #include "../core/pd_romart.h"
@@ -258,9 +259,32 @@ int main(int argc, char** argv) {
     }
     tap(&p, HIT_BACK, 0);
 
-    // BATTLE has a chip only while a battle is on.
+    // BATTLE has a chip only while a battle is on. A battle opens on the
+    // CONTROLS (where the game's menu can be driven): each state the game's
+    // menu can be in, set by hand (the fixtures were dumped mid-turn), then
+    // FIGHT's grid and POKéMON's party; then INFO.
     ui.tab = PD_TAB_BATTLE;
     draw(&p);
+    if (snap.inBattle && ui.battlePane == PD_BATTLE_CONTROLS) {
+        int real = snap.inputState;
+        snap.inputState = PD_BIN_ACTION;
+        draw(&p);
+        shot(out, name, "battle-controls", px);
+        tap(&p, HIT_BC_FIGHT, 0);
+        shot(out, name, "battle-controls-moves", px);
+        tap(&p, HIT_BC_CANCEL, 0);
+        tap(&p, HIT_BC_FIGHT + 2, 0);
+        shot(out, name, "battle-controls-party", px);
+        tap(&p, HIT_BC_CANCEL, 0);
+        snap.inputState = PD_BIN_BAG;
+        draw(&p);
+        shot(out, name, "battle-controls-bag", px);
+        snap.inputState = PD_BIN_BUSY;
+        draw(&p);
+        shot(out, name, "battle-controls-wait", px);
+        snap.inputState = real;
+        tap(&p, HIT_BATTLE_INFO, 0);
+    }
     shot(out, name, "battle", px);
     if (has_hit(&p, HIT_BATTLE_SUGGEST)) {
         tap(&p, HIT_BATTLE_SUGGEST, 0);
