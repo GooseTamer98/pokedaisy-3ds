@@ -6,6 +6,7 @@
 #   make fixture-roms  build/fixture-*.gba: test ROMs holding a RAM fixture
 #   make azahar-test   run the .3dsx in the Azahar emulator, screenshots in build/azahar/
 #   make tables    regenerate core/*_gen.c (the app's Kotlin tables + font) and ctr/icon.png
+#   make act-test  USE / GIVE / TAKE / PC / FLY run on the decomp ROMs in a host mGBA
 
 REPO := $(abspath ..)
 FIXTURES := $(REPO)/app/src/test/resources/fixtures
@@ -15,7 +16,7 @@ CFLAGS ?= -std=c11 -O2 -Wall -Wextra -Werror
 CORE_SRC := $(wildcard core/*.c)
 DEVKITARM_IMAGE := devkitpro/devkitarm:latest
 
-.PHONY: preview 3ds decomps fixture-roms azahar-test azahar-battle-test tables clean
+.PHONY: act-test preview 3ds decomps fixture-roms azahar-test azahar-battle-test tables clean
 
 $(BUILD)/pd_preview: $(CORE_SRC) $(wildcard core/*.h) desktop/pd_preview.c desktop/pd_png.c desktop/pd_png.h
 	@mkdir -p $(BUILD)
@@ -119,6 +120,32 @@ azahar-battle-test: 3ds fixture-roms
 		click:779,697 wait:1 shot:04-foe-last \
 		click:531,697 wait:1 shot:05-foe-last-suggest
 	for s in $(AZAHAR_BATTLE_SHOTS); do convert xwd:$(BUILD)/azahar-battle/$$s.xwd -crop 640x500+320+230 $(BUILD)/azahar-battle/$$s.png; done
+
+# The game actions (core/pd_action.c, mgba/pd_mgba.c) for real: each decomp ROM
+# booted in a host libmgba (built here from the submodule, GBA only), a RAM
+# fixture loaded over the running game, then USE / GIVE / TAKE / a Repel /
+# FLY / the PC through the game's own functions, checked in RAM
+# (desktop/pd_act_test.c). Needs `make decomps` and cmake.
+MGBA_HOST := $(BUILD)/mgba-host
+MGBA := $(REPO)/third_party/mgba
+$(MGBA_HOST)/libmgba.a:
+	mkdir -p $(MGBA_HOST)
+	cd $(MGBA_HOST) && cmake $(MGBA) -DLIBMGBA_ONLY=ON -DBUILD_STATIC=ON -DBUILD_SHARED=OFF -DM_CORE_GB=OFF \
+		-DUSE_DEBUGGERS=OFF -DUSE_ZLIB=OFF -DUSE_PNG=OFF -DUSE_LIBZIP=OFF -DUSE_MINIZIP=OFF -DUSE_SQLITE3=OFF \
+		-DUSE_ELF=OFF -DUSE_LZMA=OFF -DUSE_EDITLINE=OFF -DUSE_FFMPEG=OFF -DUSE_EPOXY=OFF -DENABLE_SCRIPTING=OFF \
+		-DCMAKE_BUILD_TYPE=Release -DCMAKE_POLICY_VERSION_MINIMUM=3.5 >/dev/null
+	$(MAKE) -C $(MGBA_HOST) mgba
+
+$(BUILD)/pd_act_test: $(MGBA_HOST)/libmgba.a $(CORE_SRC) $(wildcard core/*.h) mgba/pd_mgba.c mgba/pd_mgba.h desktop/pd_act_test.c
+	$(CC) -std=gnu11 -O1 -Wall -Wextra -Werror -Icore -Imgba -I$(MGBA)/include -I$(MGBA)/src -I$(MGBA_HOST)/include \
+		-DM_CORE_GBA -o $@ desktop/pd_act_test.c mgba/pd_mgba.c $(CORE_SRC) $(MGBA_HOST)/libmgba.a -lm -lpthread
+
+DECOMP_DIR := $(BUILD)/decomps
+act-test: $(BUILD)/pd_act_test
+	$(BUILD)/pd_act_test $(DECOMP_DIR)/pokefirered/pokefirered_rev1.gba $(FIXTURES)/firered_vanilla
+	$(BUILD)/pd_act_test $(DECOMP_DIR)/pokefirered/pokeleafgreen.gba $(FIXTURES)/leafgreen_rev0
+	$(BUILD)/pd_act_test $(DECOMP_DIR)/pokefirered/pokeleafgreen_rev1.gba $(FIXTURES)/leafgreen_rev1
+	$(BUILD)/pd_act_test $(DECOMP_DIR)/pokeemerald/pokeemerald.gba $(FIXTURES)/emerald_vanilla
 
 clean:
 	rm -rf $(BUILD) ctr/build ctr/pokedaisy.3dsx

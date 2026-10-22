@@ -62,7 +62,7 @@ static void load_favorites(struct pd_settings* s, const char* game, const char* 
         if (!s->favorites[i].game[0]) f = &s->favorites[i];
     }
     if (!f || strlen(game) >= sizeof(f->game) || !*game) return;
-    snprintf(f->game, sizeof(f->game), "%s", game);
+    memcpy(f->game, game, strlen(game) + 1);
     const char* p = list;
     while (*p && f->count < PD_FAV_MAX) {
         char* end;
