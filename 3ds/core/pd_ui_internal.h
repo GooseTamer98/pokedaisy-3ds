@@ -34,7 +34,7 @@ enum {
     HIT_MAP_PLACES = 903,
     HIT_PLACE = 1000,      // + PLACES row
     HIT_DEX_LIST = 1400,
-    HIT_DEX_ROW = 1500,    // + national number
+    HIT_DEX_ROW = 5000,    // + national number (up to PD_NATIONAL_MAX)
     HIT_DEX_TOGGLE = 1900,
     HIT_DEX_PREV = 1901,
     HIT_DEX_NEXT = 1902,

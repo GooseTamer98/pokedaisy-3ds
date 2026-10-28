@@ -42,12 +42,20 @@ enum pd_boss_kind {
     PD_BOSS_CHAMPION, // the rival: league(a, b) + an offset by the starter
 };
 
+// One of a boss's teams, by what picks it (Unbound's difficulty).
+struct pd_boss_variant {
+    const char* label;
+    uint16_t trainer;
+};
+
 struct pd_boss {
     const char* title;
     const char* where;
     uint16_t doneFlag;
     uint8_t kind;
     uint16_t a, b;
+    const struct pd_boss_variant* variants; // a section per team; NULL = the one above
+    uint8_t variantCount;
 };
 
 struct pd_guide {
@@ -58,9 +66,11 @@ struct pd_guide {
     bool verified;
     uint16_t leagueRematchFlag; // FireRed's FLAG_SYS_CAN_LINK_WITH_RS
     uint16_t starterVar;        // FireRed's VAR_STARTER_MON
+    bool generatedWhereIs;      // WHERE IS from the area data (the hacks': generatedWhereIs)
 };
 
-extern const struct pd_guide pd_guide_firered, pd_guide_leafgreen, pd_guide_emerald, pd_guide_ruby, pd_guide_sapphire;
+extern const struct pd_guide pd_guide_firered, pd_guide_leafgreen, pd_guide_emerald, pd_guide_ruby, pd_guide_sapphire,
+    pd_guide_unbound, pd_guide_radical_red;
 
 enum pd_area_kind { PD_AREA_ITEM, PD_AREA_HIDDEN, PD_AREA_GIFT, PD_AREA_KEY, PD_AREA_MON, PD_AREA_EGG, PD_AREA_TRADE };
 
@@ -69,13 +79,15 @@ struct pd_area_thing {
     uint8_t kind;      // enum pd_area_kind
     uint16_t id;       // an item, or the species you get
     uint16_t flag;     // set once it's done (0 = none known)
-    uint8_t qty;
+    uint16_t qty;
     uint16_t wants;    // TRADE: the species they want
     const char* where; // the sub-map ("" = the area's main map)
 };
 
-extern const struct pd_area_thing pd_areas_firered[], pd_areas_leafgreen[], pd_areas_emerald[], pd_areas_ruby_sapphire[];
-extern const int pd_areas_firered_count, pd_areas_leafgreen_count, pd_areas_emerald_count, pd_areas_ruby_sapphire_count;
+extern const struct pd_area_thing pd_areas_firered[], pd_areas_leafgreen[], pd_areas_emerald[], pd_areas_ruby_sapphire[],
+    pd_areas_unbound[], pd_areas_radical_red[];
+extern const int pd_areas_firered_count, pd_areas_leafgreen_count, pd_areas_emerald_count, pd_areas_ruby_sapphire_count,
+    pd_areas_unbound_count, pd_areas_radical_red_count;
 
 // The guide and area data for g (NULL / 0 if none).
 const struct pd_guide* pd_guide_for(const struct pd_game* g);

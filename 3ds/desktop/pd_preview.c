@@ -465,7 +465,7 @@ int main(int argc, char** argv) {
         drag(&p, HIT_DEX_SECTION_LIST, -200);
         shot(out, name, "dex-moves-scrolled", px);
         tap(&p, HIT_DEX_SECTION + PD_DEX_EVOLVE, 0);
-        int fam = first_hit(&p, HIT_DEX_ROW, HIT_DEX_ROW + PD_NATIONAL_COUNT + 1);
+        int fam = first_hit(&p, HIT_DEX_ROW, HIT_DEX_ROW + PD_NATIONAL_MAX + 1);
         if (fam >= 0) {
             tap(&p, fam, 0);
             shot(out, name, "dex-evolve-opened", px);

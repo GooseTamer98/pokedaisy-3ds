@@ -19,7 +19,8 @@ static uint32_t u32(const uint8_t* p) {
 }
 
 const struct pd_guide* pd_guide_for(const struct pd_game* g) {
-    if (g->hack) return NULL; // the hacks' guides aren't ported yet
+    if (g->hack == PD_HACK_UNBOUND) return &pd_guide_unbound;
+    if (g->hack == PD_HACK_RADICAL_RED) return &pd_guide_radical_red;
     // Ruby / Sapphire run as Emerald but have a guide of their own (the app's GuideId).
     if (pd_game_is_rs(g)) return !strcmp(g->code, "AXVE") ? &pd_guide_ruby : &pd_guide_sapphire;
     if (g->kind == PD_GAME_EMERALD) return &pd_guide_emerald;
@@ -28,9 +29,13 @@ const struct pd_guide* pd_guide_for(const struct pd_game* g) {
 }
 
 const struct pd_area_thing* pd_areas_for(const struct pd_game* g, int* count) {
-    if (g->hack) {
-        *count = 0;
-        return NULL;
+    if (g->hack == PD_HACK_UNBOUND) {
+        *count = pd_areas_unbound_count;
+        return pd_areas_unbound;
+    }
+    if (g->hack == PD_HACK_RADICAL_RED) {
+        *count = pd_areas_radical_red_count;
+        return pd_areas_radical_red;
     }
     if (pd_game_is_rs(g)) {
         *count = pd_areas_ruby_sapphire_count;
@@ -130,13 +135,22 @@ static void default_moves(const struct pd_game* g, int species, int level, int* 
     const uint8_t* ptr = pd_rom_at(g, g->cfg->learnsets + (uint32_t) species * 4, 4);
     if (!ptr) return;
     uint32_t at = u32(ptr);
+    bool cfru = g->cfg->learnsetCfru;
     int n = 0;
     for (int i = 0; i < 64; i++) {
-        const uint8_t* e = pd_rom_at(g, at + (uint32_t) i * 2, 2);
-        if (!e) return;
-        uint16_t v = u16(e);
-        if (v == 0xFFFF || (v >> 9) > level) return;
-        int move = v & 0x1FF;
+        int move;
+        if (cfru) {
+            // {u16 move, u8 level}, ending at level 0xFF.
+            const uint8_t* e = pd_rom_at(g, at + (uint32_t) i * 3, 3);
+            if (!e || e[2] == 0xFF || e[2] > level) return;
+            move = u16(e);
+        } else {
+            const uint8_t* e = pd_rom_at(g, at + (uint32_t) i * 2, 2);
+            if (!e) return;
+            uint16_t v = u16(e);
+            if (v == 0xFFFF || (v >> 9) > level) return;
+            move = v & 0x1FF;
+        }
         bool dup = false;
         for (int k = 0; k < n; k++) dup |= moves[k] == move;
         if (dup) continue;
@@ -252,7 +266,7 @@ bool pd_wild_here(const struct pd_game* g, const struct pd_snapshot* s, struct p
 // app's DexDetails.mapsec; -1 when the pointers don't lead to a header.
 static int mapsec_of(const struct pd_game* g, int group, int num) {
     const uint8_t* list = g->cfg->mapGroups ? pd_rom_at(g, g->cfg->mapGroups + (uint32_t) group * 4, 4) : NULL;
-    const uint8_t* hp = list ? pd_rom_at(g, u32(list) + (uint32_t) num * 4, 4) : NULL;
+    const uint8_t* hp = list ? pd_rom_at(g, (u32(list) ^ g->cfg->mapGroupsXor) + (uint32_t) num * 4, 4) : NULL;
     const uint8_t* hdr = hp ? pd_rom_at(g, u32(hp), 0x18) : NULL;
     if (!hdr || !pd_rom_at(g, u32(hdr), 4) || !pd_rom_at(g, u32(hdr + 4), 4)) return -1;
     return hdr[0x14];

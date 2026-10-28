@@ -369,7 +369,15 @@ static void read_save_fields(struct pd_snapshot* s, const struct pd_config* cfg,
 
     // struct Pokedex at SaveBlock2+0x18: owned at +0x10, seen at +0x44.
     uint8_t owned[PD_DEX_BYTES], seen[PD_DEX_BYTES], copy1[PD_DEX_BYTES], copy2[PD_DEX_BYTES], magic = 0;
-    if (cfg->dexSeenCopy1 && read(ctx, sb2 + 0x28, owned, PD_DEX_BYTES) && read(ctx, sb2 + 0x5C, seen, PD_DEX_BYTES) &&
+    if (cfg->dexSeenSb1 && cfg->dexFlagBytes <= PD_DEX_BYTES) {
+        // CFRU's: SaveBlock1's own arrays, no copies to agree with.
+        if (read(ctx, sb1 + cfg->dexSeenSb1, s->dexSeen, (size_t) cfg->dexFlagBytes) &&
+            read(ctx, sb1 + cfg->dexCaughtSb1, s->dexCaught, (size_t) cfg->dexFlagBytes)) {
+            s->dexOk = true;
+            s->dexNational = cfg->nationalAlways ||
+                (read(ctx, sb2 + 0x18 + cfg->nationalMagicOff, &magic, 1) && magic == cfg->nationalMagic);
+        }
+    } else if (cfg->dexSeenCopy1 && read(ctx, sb2 + 0x28, owned, PD_DEX_BYTES) && read(ctx, sb2 + 0x5C, seen, PD_DEX_BYTES) &&
         read(ctx, sb1 + cfg->dexSeenCopy1, copy1, PD_DEX_BYTES) &&
         read(ctx, sb1 + cfg->dexSeenCopy2, copy2, PD_DEX_BYTES) &&
         read(ctx, sb2 + 0x18 + cfg->nationalMagicOff, &magic, 1)) {
@@ -403,7 +411,7 @@ int pd_var(const struct pd_snapshot* s, int var) {
 
 static bool dex_bit(const uint8_t* bits, int national) {
     int i = national - 1;
-    return i >= 0 && i < PD_NATIONAL_COUNT && (bits[i / 8] >> (i % 8) & 1);
+    return i >= 0 && i < PD_NATIONAL_MAX && (bits[i / 8] >> (i % 8) & 1);
 }
 
 bool pd_dex_seen(const struct pd_snapshot* s, int national) {

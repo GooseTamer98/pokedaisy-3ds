@@ -41,6 +41,8 @@ const char* pd_egg_group_name(int group);
 // Whether g's ROM has this port's POKéDEX tables (the app's probe: entry 1
 // is SEED, 7 dm, 69 hg; species 1 is national 1).
 bool pd_dex_available(const struct pd_game* g);
+// How many national numbers the game's dex has (386 retail; 0 = no dex).
+int pd_dex_national_count(const struct pd_game* g);
 // The species for a national number (0 = none), and back.
 int pd_dex_species(const struct pd_game* g, int national);
 int pd_dex_national(const struct pd_game* g, int species);

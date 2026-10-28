@@ -99,6 +99,16 @@ struct pd_config {
     uint32_t evolutions, tmhmLearnsets, tmhmMoves, footprints, mapGroups;
     int regionalCount;
     const char* regionName;
+    // The hacks' dex (POKEDEX_UNBOUND / _RADICAL_RED): more species and
+    // national numbers (0 = retail's 412 / 386), 17-byte ability names,
+    // regionalOrder listing species ids, the National Dex always there.
+    int dexSpeciesCount, dexNationalCount, abilityNameLen;
+    bool regionalOrderIsSpecies, nationalAlways;
+    // CFRU keeps seen / caught in SaveBlock1 (no anti-cheat copies): offsets
+    // and bytes; 0 = struct Pokedex in SaveBlock2 with dexSeenCopy1 / 2.
+    uint32_t dexSeenSb1, dexCaughtSb1;
+    int dexFlagBytes;
+    const char* dexProbe; // entry 1's category (checks the tables); NULL = "SEED"
     // ... and the save: SaveBlock2's owned / seen flags, SaveBlock1's two
     // copies of seen (all must agree), the National Dex byte.
     uint32_t dexSeenCopy1, dexSeenCopy2; // in SaveBlock1
@@ -111,6 +121,8 @@ struct pd_config {
     uint32_t flagsOff, varsOff, flagBytes; // in SaveBlock1
     int probeTrainer;     // checks the tables match the ROM ...
     const char* probeName; // ... by this trainer's name
+    bool learnsetCfru;    // CFRU's learnsets: {u16 move, u8 level}, ending at level 0xFF
+    uint32_t mapGroupsXor; // gMapGroups' group pointers XOR this (Unbound's hooked lookup)
 
     // TRAINER CARD (the app's TrainerCardSave): which card (PD_CARD_*, 0 =
     // none), SaveBlock1.gameStats, the badge / POKéDEX flags, what makes the

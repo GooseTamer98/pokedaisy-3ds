@@ -385,12 +385,53 @@ static const struct pd_config SAPPHIRE = {
 // Pokémon Unbound v2.1.1.1 (sha1 b4776b82...) and its French translation
 // (0ce2a880..., the same code and RAM): CFRU repointed gItems; its party icons
 // are UnboundIconSource's table, item icons sItemIconTable's.
+#define UNBOUND_COMMON \
+    CFRU_RAM, \
+    .items = 0x08876200, \
+    .monIconTable = 0x09A217FC, \
+    .monIconPaletteInline = true, \
+    .itemIcons = 0x0825A554, \
+    /* POKEDEX_UNBOUND: its Borrius dex (species ids, 498) and the National \
+       Dex (905, always there); CFRU's flags in SaveBlock1. */ \
+    .dexEntries = 0x09A357CC, \
+    .dexEntryStride = 0x24, \
+    .frontPics = 0x09A1D5B4, \
+    .palettes = 0x09A32BDC, \
+    .speciesInfo = 0x099E0C9C, \
+    .speciesToNational = 0x09A41FEC, \
+    .abilityNames = 0x08A36398, \
+    .abilityNameLen = 17, \
+    .dexSpeciesCount = 1294, \
+    .dexNationalCount = 905, \
+    .regionalCount = 498, \
+    .regionName = "BORRIUS", \
+    .regionalOrder = 0x09A3F398, \
+    .regionalOrderIsSpecies = true, \
+    .nationalAlways = true, \
+    .dexSeenSb1 = 0x310, \
+    .dexCaughtSb1 = 0x38D, \
+    .dexFlagBytes = 125, \
+    /* GUIDE_TABLES_UNBOUND: FireRed rev 0's gTrainers (MIRSKLE is 6), CFRU's \
+       learnsets, its own wild headers and XOR'd gMapGroups. */ \
+    .trainers = 0x0823EAC8, \
+    .learnsets = 0x09A2457C, \
+    .learnsetCfru = true, \
+    .wildHeaders = 0x08C230D8, \
+    .probeTrainer = 6, \
+    .mapGroups = 0x08B70498, \
+    .mapGroupsXor = 0x00B749DE,
+
 static const struct pd_config UNBOUND = {
-    CFRU_RAM,
-    .items = 0x08876200,
-    .monIconTable = 0x09A217FC,
-    .monIconPaletteInline = true,
-    .itemIcons = 0x0825A554,
+    UNBOUND_COMMON
+    .probeName = "Mirskle",
+};
+
+// Its French translation: the same tables, text translated in place (the
+// probe trainer is Sylvain, entry 1's category "Graine").
+static const struct pd_config UNBOUND_FR = {
+    UNBOUND_COMMON
+    .probeName = "Sylvain",
+    .dexProbe = "Graine",
 };
 
 // Pokémon Radical Red v4.1 (sha1 964f951a...): CFRU repointed the words retail
@@ -403,6 +444,32 @@ static const struct pd_config RADICAL_RED = {
     .monIconPaletteIndices = 0x097FE164,
     .monIconPaletteTable = 0x083D4038,
     .itemIcons = 0x093C8100,
+    // POKEDEX_RADICAL_RED: Kanto, then the National Dex to 1025 (FireRed's
+    // nationalMagic); CFRU's flags in SaveBlock1, 164 bytes.
+    .dexEntries = 0x09814030,
+    .dexEntryStride = 0x24,
+    .frontPics = 0x097FA1C4,
+    .palettes = 0x09811208,
+    .speciesInfo = 0x097B98EC,
+    .speciesToNational = 0x098218F0,
+    .abilityNames = 0x090E32C0,
+    .abilityNameLen = 17,
+    .dexSpeciesCount = 1376,
+    .dexNationalCount = 1025,
+    .regionalCount = 151,
+    .regionName = "KANTO",
+    .dexSeenSb1 = 0x310,
+    .dexCaughtSb1 = 0x3B4,
+    .dexFlagBytes = 164,
+    // GUIDE_TABLES_RADICAL_RED: gTrainers rewritten in place (BROCK is 414),
+    // CFRU's learnsets, its wild headers moved; FireRed's gMapGroups.
+    .trainers = 0x0823EAC8,
+    .learnsets = 0x0980175C,
+    .learnsetCfru = true,
+    .wildHeaders = 0x0872C984,
+    .probeTrainer = 414,
+    .probeName = "Brock",
+    .mapGroups = 0x083526A8,
 };
 
 struct known_hack {
@@ -418,7 +485,7 @@ static const struct known_hack HACKS[] = {
     { "b4776b82a4c7915d0fadeaa27e013523f99dfd94", PD_HACK_UNBOUND, "Pokémon Unbound", &UNBOUND, &pd_text_unbound },
     // Its French translation: the companion shows Unbound's English names (the
     // app's French ones aren't ported); the ROM's own text (items, dex) is French.
-    { "0ce2a880aa097f1dce4e1db8ee513d0e82d15859", PD_HACK_UNBOUND, "Pokémon Unbound (FR)", &UNBOUND, &pd_text_unbound },
+    { "0ce2a880aa097f1dce4e1db8ee513d0e82d15859", PD_HACK_UNBOUND, "Pokémon Unbound (FR)", &UNBOUND_FR, &pd_text_unbound },
     { "964f951a0fdaf209e4ea1344883ef0d557bb3a80", PD_HACK_RADICAL_RED, "Pokémon Radical Red", &RADICAL_RED, &pd_text_radical_red },
 };
 

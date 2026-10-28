@@ -61,8 +61,10 @@ struct pd_battle_mon {
 
 // A pocket's slots: every pocket of FireRed's and Emerald's bag holds at most 64.
 #define PD_POCKET_SLOTS 64
-#define PD_NATIONAL_COUNT 386
-#define PD_DEX_BYTES 52
+// Room for the biggest dex (Radical Red's 1025 national numbers, 164 bytes of flags);
+// a game's own count is pd_dex_national_count().
+#define PD_NATIONAL_MAX 1025
+#define PD_DEX_BYTES 168
 #define PD_FLAG_BYTES 0x12C // Emerald's; FireRed's 0x120 fit
 #define PD_VAR_COUNT 0x100
 #define PD_GAME_STATS 52 // up to GAME_STAT_BERRY_CRUSH_POINTS

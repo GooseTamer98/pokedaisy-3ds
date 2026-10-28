@@ -28,7 +28,7 @@ static bool national_view(const struct pd_ui* ui, const struct pd_snapshot* s) {
 static int dex_list(const struct pd_game* g, bool national, int* out) {
     int n = 0;
     if (national) {
-        for (int i = 1; i <= PD_NATIONAL_COUNT; i++) {
+        for (int i = 1; i <= pd_dex_national_count(g); i++) {
             if (pd_dex_species(g, i)) out[n++] = i;
         }
     } else {
@@ -71,7 +71,7 @@ static void title(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game* g
 
 // The list shown (rebuilt each draw), kept for the tap handler, which has no
 // game at hand: the toggle flips what shows, up / down step through it.
-static int lastList[PD_NATIONAL_COUNT], lastCount;
+static int lastList[PD_NATIONAL_MAX], lastCount;
 static bool lastNational;
 
 static void list_view(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game* g, const struct pd_snapshot* s) {
@@ -393,7 +393,7 @@ static void entry_view(struct pd_ui* ui, struct pd_canvas* c, const struct pd_ga
     pd_triangle(c, ax + 9, top + 3, 5, PD_UP, PD_TITLE_TEXT);
     ui_button(ui, c, ax + 30, top - 2, 26, 18, "", HIT_DEX_NEXT);
     pd_triangle(c, ax + 39, top + 4, 5, PD_DOWN, PD_TITLE_TEXT);
-    snprintf(buf, sizeof(buf), "%s POKéMON", e.category);
+    snprintf(buf, sizeof(buf), pd_game_text->ownCase ? "%s Pokémon" : "%s POKéMON", e.category);
     pd_text_fit(c, tx, top + 18, tw, buf, PD_MUTED, PD_MUTED_SHADOW);
     int cx = tx;
     cx += ui_type_chip(c, cx, top + 38, e.type1, NULL) + 4;
@@ -457,7 +457,7 @@ bool ui_dex_act(struct pd_ui* ui, int id) {
         ui->dexSection = id - HIT_DEX_SECTION;
         return true;
     }
-    if (id >= HIT_DEX_ROW && id <= HIT_DEX_ROW + PD_NATIONAL_COUNT) {
+    if (id >= HIT_DEX_ROW && id <= HIT_DEX_ROW + PD_NATIONAL_MAX) {
         ui->dexOpen = id - HIT_DEX_ROW;
         return true;
     }
