@@ -380,7 +380,11 @@ static const struct pd_config SAPPHIRE = {
     .inputItem = 0x0803073C,                    \
     .inputParty = 0x08030684,                   \
     .actionCursor = 0x02023FF8,                 \
-    .moveCursor = 0x02023FFC
+    .moveCursor = 0x02023FFC,                   \
+    /* The battle switch: FireRed's gPartyMenu under CFRU's two-column grid   \
+       (checked headless on both: DOWN, A, SHIFT put slot 2 in). */           \
+    .partyMenu = 0x0203B0A0,                    \
+    .partyGrid = true
 
 // Pokémon Unbound v2.1.1.1 (sha1 b4776b82...) and its French translation
 // (0ce2a880..., the same code and RAM): CFRU repointed gItems; its party icons

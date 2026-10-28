@@ -111,7 +111,13 @@ FireRed rev 1, LeafGreen rev 0 / 1, Emerald, Ruby / Sapphire rev 0 / 1 / 2: Fire
 without wild / BOSS, as in the app). Ruby / Sapphire run as `PD_GAME_EMERALD` (`pd_game_is_rs` where they differ) with the
 app's NATIVE_RUBY switches on `pd_config`: `staticSaveBlocks`, `noEncryptionKey`, `inBattleOff` 0x43D, `battleStructStatic`,
 `dexPage2Off`, `itemCount` 349; their GUIDE is `GuideRubySapphire.kt` built per version (`$team`-style templates); no card,
-no item icons, no POKéMON switch (POKéMON presses the game's own; no gPartyMenu there); item descriptions are read from the ROM's gItems (`pd_item_description`), never bundled. Games
+no item icons, no POKéMON switch (POKéMON presses the game's own; no gPartyMenu there). ROM hacks: Unbound v2.1.1.1 (+ FR) and
+Radical Red v4.1, `pd_game.hack` (kind stays FIRERED), picked by `pd_game_identify` (masked SHA-1, `pd_sha1.c`, once the ROM is
+in); every name lookup goes through the running game's `pd_text` set (`pd_game_text`, the app's ActiveTables; `gen_tables.py`
+writes FireRed / Emerald / Unbound / Radical Red's); CFRU = FireRed rev 0's RAM, `plainBoxes`, `partyGrid`, CFRU dex flags in
+SaveBlock1 (`dexSeenSb1`), `learnsetCfru`, Unbound's `mapGroupsXor` / inline icon palettes / fly spots + region pin. Their
+guides come from `GuideUnbound.kt` / `GuideRadicalRed.kt` (boss `variants`, `generatedWhereIs`). No ROMs here: the preview runs
+their RAM fixtures as `BPRE@<sha1>`; the ROM reads are untested until someone runs them on the real ROMs; item descriptions are read from the ROM's gItems (`pd_item_description`), never bundled. Games
 boot on a New 3DS (2026-10-22: Emerald / LeafGreen load) - ROMs must go through `mCorePreloadVF` into mGBA's fixed
 ROM buffer (`core->loadROM` on the SD file put a 16 MB copy in the linear heap, never freed: a crash on hardware, fine in
 Azahar). Its tabs: PARTY, BAG, MAP, GUIDE, POKéDEX (BATTLE takes the last chip in a battle: INFO /

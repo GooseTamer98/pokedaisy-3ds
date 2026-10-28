@@ -54,7 +54,7 @@ preview: $(BUILD)/pd_preview
 	# The CFRU hacks, known by their SHA-1 (no ROM here: the RAM-read tabs only).
 	$(BUILD)/pd_preview $(FIXTURES)/unbound BPRE@$(UNBOUND_SHA1) $(BUILD)/shots unbound $(call rom_if,$(UB_ROM))
 	$(BUILD)/pd_preview $(FIXTURES)/unbound_battle BPRE@$(UNBOUND_SHA1) $(BUILD)/shots unbound-battle $(call rom_if,$(UB_ROM))
-	$(BUILD)/pd_preview $(FIXTURES)/radical_red BPRE@$(RADICAL_RED_SHA1) $(BUILD)/shots radical-red $(call rom_if,$(RR_ROM))
+	$(BUILD)/pd_preview $(FIXTURES)/radical_red_1636 BPRE@$(RADICAL_RED_SHA1) $(BUILD)/shots radical-red $(call rom_if,$(RR_ROM))
 	$(BUILD)/pd_preview $(FIXTURES)/radical_red_battle BPRE@$(RADICAL_RED_SHA1) $(BUILD)/shots radical-red-battle $(call rom_if,$(RR_ROM))
 
 decomps:

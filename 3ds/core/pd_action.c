@@ -52,9 +52,19 @@ struct actions {
     // Overworld_MapTypeAllowsTeleportAndFly(gMapHeader.mapType), at this
     // function address, gMapHeader here. 0 = call SetUpFieldMove_Fly.
     uint32_t mapHeader;
+    // A ROM hack's table (matched by pd_game.hack, not the header), and what
+    // its patches changed: GetMapsecType widened to 16-bit sections (CFRU's
+    // other CRC), Unbound's fly spots (10-byte records, the section first: its
+    // FLY towns) and the region pointer SetFlyWarpDestination reads (sRegionMap
+    // + offset, NULL on the field: aimed at a zero scratch byte for the call).
+    enum pd_hack hack;
+    uint32_t mapsecTypeAltCrc;
+    uint32_t spots, spotCount, spotStride;
+    uint32_t pinPointer, pinOffset, pinScratch;
 };
 
 #define REV(n) (1u << (n))
+#define RETAIL PD_HACK_NONE, 0, 0, 0, 0, 0, 0, 0
 
 #define PC_SCRIPT 0x0203FFF4u
 
@@ -72,6 +82,7 @@ static const struct actions FIRERED_REV1 = {
     { 0x07BEBC3A, 0xCD8961DF, 0x348C5B9F, 0xF9959006, 0x0111A86E, 0xBAB654BA, 0x70EA1DFC },
     { 2, 2 }, -1, NULL,
     0x080565C9, 0,
+    RETAIL,
 };
 
 static const struct actions LEAFGREEN_REV0 = {
@@ -88,6 +99,7 @@ static const struct actions LEAFGREEN_REV0 = {
     { 0x07BEBC3A, 0x5B68C93A, 0xE4D65E08, 0xF9959006, 0x0111A86E, 0xBAB654BA, 0x059815BF },
     { 2, 2 }, -1, NULL,
     0x080565B5, 0,
+    RETAIL,
 };
 
 static const struct actions LEAFGREEN_REV1 = {
@@ -104,6 +116,7 @@ static const struct actions LEAFGREEN_REV1 = {
     { 0x07BEBC3A, 0xDBE480BD, 0x50C0C136, 0xF9959006, 0x0111A86E, 0xBAB654BA, 0x059815BF },
     { 2, 2 }, -1, NULL,
     0x080565C9, 0,
+    RETAIL,
 };
 
 // Emerald has no SetFlyWarpDestination: CB_ExitFlyMap's heal location / map
@@ -129,6 +142,7 @@ static const struct actions EMERALD = {
     { 0xBCF97BF3, 0x13BE1A7A, 0x4B625BC4, 0xF9959006, 0xB9FB85A7, 0xB037C8AF, 0x74DBCE3A, 0x2F1D18CA, 0xA284286D },
     { 2, 4 }, 58, &EMERALD_HEAL,
     0x08085E5D, 0,
+    RETAIL,
 };
 
 // Ruby / Sapphire (FIELD_ITEMS_RUBY / _SAPPHIRE, PC_*, FLY_*, and the English
@@ -166,6 +180,7 @@ static const struct actions RUBY = {
     { 0xAC4D17B2, 0x6F375BAA, 0x0190971B, 0xF9959006, 0xA003C21A, 0x9807B468, 0x5BF43808, 0x2F1D18CA, 0xB2A1E0F7 },
     { 2, 4 }, 58, &RS_HEAL,
     0x080543C5, 0x0202E828,
+    RETAIL,
 };
 
 static const struct actions SAPPHIRE = {
@@ -180,6 +195,7 @@ static const struct actions SAPPHIRE = {
     { 0xAC4D17B2, 0x6F375BAA, 0x0190971B, 0xF9959006, 0xA003C21A, 0x9807B468, 0x5BF43808, 0x2F1D18CA, 0xB7ABAD76 },
     { 2, 4 }, 58, &RS_HEAL,
     0x080543C9, 0x0202E828,
+    RETAIL,
 };
 
 static const struct actions RUBY_REV0 = {
@@ -194,6 +210,7 @@ static const struct actions RUBY_REV0 = {
     { 0xAC4D17B2, 0x6F375BAA, 0x22721D44, 0xF9959006, 0xA003C21A, 0x9807B468, 0x5BF43808, 0x2F1D18CA, 0xD5F7FEC3 },
     { 2, 4 }, 58, &RS_HEAL_REV0,
     0x080543A5, 0x0202E828,
+    RETAIL,
 };
 
 static const struct actions SAPPHIRE_REV0 = {
@@ -208,10 +225,50 @@ static const struct actions SAPPHIRE_REV0 = {
     { 0xAC4D17B2, 0x6F375BAA, 0x22721D44, 0xF9959006, 0xA003C21A, 0x9807B468, 0x5BF43808, 0x2F1D18CA, 0xD0FDB342 },
     { 2, 4 }, 58, &RS_HEAL_REV0,
     0x080543A9, 0x0202E828,
+    RETAIL,
+};
+
+// The CFRU hacks keep every function these use where FireRed rev 0 has it
+// (FIELD_ITEMS_PORTS["BPRE0"], each checked by CRC) with their own gItems
+// (repointed and grown: a generous item count is harmless) - the app's cfru().
+#define CFRU_ACTIONS(itemTable)                                                                           \
+    .code = "BPRE", .revisions = REV(0),                                                                  \
+    .varGet = 0x0806E568, .varSet = 0x0806E584, .checkBagHasItem = 0x08099F40, .removeBagItem = 0x0809A1D8, \
+    .fieldControlsLocked = 0x08069958, .repelVar = 0x4020, .items = itemTable,                            \
+    .crcs = { 0xE6DE47BA, 0x6E7CC2BE, 0xD30D656E, 0xC40BF208, 0x9C26CCA4 },                               \
+    .getMonData = 0x0803FBE8, .setMonData = 0x0804037C, .itemNoEffect = 0x08042414, .itemEffect = 0x080413C0, \
+    .addBagItem = 0x0809A084, .party = 0x02024284, .partyCount = 0x02024029, .scratch = 0x0203FFF0,         \
+    .itemCount = 0x300, .unholdable = { 2, 4 },                                                           \
+    .partyCrcs = { 0x7841F205, 0x9B11B0A6, 0x788AB547, 0xEADAC6C9, 0xC316CD20 },                          \
+    .useFuncs = { 0x080A16E0, 0x080A16FC, 0x080A1718, 0x080A1998 },                                       \
+    .setupScript = 0x08069AE4, .special = 60, .specials = 0x0815FD60, .pcFn = 0x0808C6A9,                 \
+    .pcCrcs = { 0xAAC00946, 0x9662F022 },                                                                 \
+    .flagGet = 0x0806E6D0, .badgeFlag = 0x822, .setUpFieldMoveFly = 0x08124A8C, .getMapsecType = 0x080C35DC, \
+    .fadeScreen = 0x0807A818, .lockControls = 0x08069940, .unlockControls = 0x0806994C,                   \
+    .setFlyWarpDestination = 0x080C527C, .partyMenuSlotId = 0x0203B0A9, .destinations = 0x083F2EE0,       \
+    .firstMapsec = 0x58, .flyCount = 108, .flyTypes = { 2, 2 }, .extraMapsec = -1,                        \
+    .overworldCb2 = 0x080565B5, .mapsecTypeAltCrc = 0x7AFF168A
+
+static const struct actions RADICAL_RED = {
+    CFRU_ACTIONS(0x093C0000),
+    .flyCrcs = { 0x07BEBC3A, 0x950F2C97, 0x9A186C79, 0xF9959006, 0x0111A86E, 0xBAB654BA, 0x70EA1DFC },
+    .hack = PD_HACK_RADICAL_RED,
+};
+
+// Unbound (flyUnbound): CFRU jumps GetMapsecType / SetFlyWarpDestination into
+// its own code - a visited flag per section, and its regions' fly spots
+// (Borrius: 27 at 0x09FE6694); the region comes from sRegionMap (0x020399D4)
+// + 0x479B, NULL on the field, so it's pinned to a zero byte for the call.
+static const struct actions UNBOUND = {
+    CFRU_ACTIONS(0x08876200),
+    .flyCrcs = { 0x07BEBC3A, 0x950F2C97, 0x31F88DE4, 0xF9959006, 0x0111A86E, 0xBAB654BA, 0xE6E6C0C1 },
+    .hack = PD_HACK_UNBOUND,
+    .spots = 0x09FE6694, .spotCount = 27, .spotStride = 10,
+    .pinPointer = 0x020399D4, .pinOffset = 0x479B, .pinScratch = 0x0203FFF0,
 };
 
 static const struct actions* const ALL[] = { &FIRERED_REV1, &LEAFGREEN_REV0, &LEAFGREEN_REV1, &EMERALD,
-                                             &RUBY, &SAPPHIRE, &RUBY_REV0, &SAPPHIRE_REV0 };
+                                             &RUBY, &SAPPHIRE, &RUBY_REV0, &SAPPHIRE_REV0, &RADICAL_RED, &UNBOUND };
 
 #define ITEM_SIZE 44
 #define ITEM_PARAM 0x13
@@ -277,7 +334,12 @@ static const struct support* support_for(const struct pd_game* g) {
     if (!rom || !g->cfg) return &s;
     for (size_t i = 0; i < sizeof(ALL) / sizeof(ALL[0]); i++) {
         const struct actions* t = ALL[i];
-        if (strncmp(g->code, t->code, 4) || g->revision < 0 || g->revision > 31 || !(t->revisions & REV(g->revision))) continue;
+        // A hack by its own table (Unbound FR's header revision is 0x9E); retail by code and revision.
+        if (t->hack != g->hack) continue;
+        if (!t->hack && (strncmp(g->code, t->code, 4) || g->revision < 0 || g->revision > 31 ||
+                         !(t->revisions & REV(g->revision)))) {
+            continue;
+        }
         const uint32_t fns[5] = { t->varGet, t->varSet, t->checkBagHasItem, t->removeBagItem, t->fieldControlsLocked };
         bool ok = true;
         for (int k = 0; k < 5 && ok; k++) ok = crc_ok(g, fns[k], t->crcs[k]);
@@ -305,7 +367,10 @@ static const struct support* support_for(const struct pd_game* g) {
             fly[fn++] = t->setFlyWarpDestination;
         }
         s.fly = true;
-        for (int k = 0; k < fn && s.fly; k++) s.fly = crc_ok(g, fly[k], t->flyCrcs[k]);
+        for (int k = 0; k < fn && s.fly; k++) {
+            s.fly = crc_ok(g, fly[k], t->flyCrcs[k]) ||
+                    (k == 2 && t->mapsecTypeAltCrc && crc_ok(g, fly[k], t->mapsecTypeAltCrc));
+        }
         break;
     }
     return &s;
@@ -571,7 +636,19 @@ static bool fly_type(const struct actions* t, int type) {
     return type == t->flyTypes[0] || type == t->flyTypes[1];
 }
 
-static bool known_mapsec(const struct actions* t, int mapsec) {
+// Unbound's fly spot i's section (a byte), -1 past the table.
+static int spot_mapsec(const struct pd_game* g, const struct actions* t, uint32_t i) {
+    uint8_t sec;
+    return i < t->spotCount && pd_rom_read(g, t->spots + i * t->spotStride, &sec, 1) ? sec : -1;
+}
+
+static bool known_mapsec(const struct pd_game* g, const struct actions* t, int mapsec) {
+    if (t->spots) {
+        for (uint32_t i = 0; i < t->spotCount; i++) {
+            if (spot_mapsec(g, t, i) == mapsec) return true;
+        }
+        return false;
+    }
     return (mapsec - t->firstMapsec >= 0 && mapsec - t->firstMapsec < t->flyCount) || mapsec == t->extraMapsec;
 }
 
@@ -606,9 +683,21 @@ static enum pd_act_result fly_targets(struct ctx* c, struct pd_act* a) {
     if (r != PD_ACT_NONE) return r;
     a->flyerSlot = flyer(c, &a->flyerPersonality);
     if (a->flyerSlot < 0) return c->failed ? PD_ACT_FAILED : PD_ACT_NO_FLYER;
+    a->flyCount = 0;
+    if (t->spots) {
+        // Unbound: its spots' sections, once each.
+        for (uint32_t i = 0; i < t->spotCount && a->flyCount < PD_FLY_MAX; i++) {
+            int mapsec = spot_mapsec(c->g, t, i);
+            bool dup = mapsec < 0;
+            for (int k = 0; k < a->flyCount && !dup; k++) dup = a->fly[k] == mapsec;
+            if (!dup && fly_type(t, (int) call(c, t->getMapsecType, (uint32_t) mapsec, 0, 0, 0))) {
+                a->fly[a->flyCount++] = (uint16_t) mapsec;
+            }
+        }
+        return c->failed ? PD_ACT_FAILED : PD_ACT_USED;
+    }
     const uint8_t* table = pd_rom_at(c->g, t->destinations, (size_t) t->flyCount * 3);
     if (!table) return PD_ACT_FAILED;
-    a->flyCount = 0;
     for (int i = 0; i <= t->flyCount && a->flyCount < PD_FLY_MAX; i++) {
         int mapsec;
         if (i < t->flyCount) {
@@ -632,7 +721,7 @@ static enum pd_act_result fly_start(struct ctx* c, struct pd_act* a) {
     const struct actions* t = c->t;
     enum pd_act_result r = fly_gate(c);
     if (r != PD_ACT_NONE) return r;
-    if (!known_mapsec(t, a->mapsec) || !fly_type(t, (int) call(c, t->getMapsecType, (uint32_t) a->mapsec, 0, 0, 0))) {
+    if (!known_mapsec(c->g, t, a->mapsec) || !fly_type(t, (int) call(c, t->getMapsecType, (uint32_t) a->mapsec, 0, 0, 0))) {
         return PD_ACT_FAILED;
     }
     uint32_t personality = 0;
@@ -651,7 +740,18 @@ static bool warp(struct ctx* c, struct pd_act* a) {
     int mapsec = a->flyMapsec;
     const struct fly_heal* h = t->heal;
     if (!h) {
+        uint8_t old[4], zero = 0;
+        bool pinned = false;
+        if (t->pinPointer) {
+            // Unbound: the region pointer aimed at a zero byte for the call, then put back.
+            uint32_t at = t->pinScratch - t->pinOffset;
+            uint8_t w[4] = { (uint8_t) at, (uint8_t) (at >> 8), (uint8_t) (at >> 16), (uint8_t) (at >> 24) };
+            pinned = c->io->read(c->io->ctx, t->pinPointer, old, 4) && c->io->write(c->io->ctx, t->pinScratch, &zero, 1) &&
+                     c->io->write(c->io->ctx, t->pinPointer, w, 4);
+            if (!pinned) return false;
+        }
         call(c, t->setFlyWarpDestination, (uint32_t) mapsec, 0, 0, 0);
+        if (pinned) c->io->write(c->io->ctx, t->pinPointer, old, 4);
         return !c->failed;
     }
     int i = mapsec - t->firstMapsec;

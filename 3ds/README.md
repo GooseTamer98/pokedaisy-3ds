@@ -103,8 +103,25 @@ all been tried on hardware yet, and speed there isn't measured. Target the **New
   available yet, and GUIDE has its pages and HERE's people / items. The FOE
   TEAM's addresses are known for FireRed / LeafGreen rev 1, Emerald and Ruby /
   Sapphire (as in the app); the icons and the bag's item descriptions (read
-  from the ROM's gItems, never bundled) for all of them. ROM hacks, other
-  languages and Game Boy aren't ported yet; they show "not supported".
+  from the ROM's gItems, never bundled) for all of them.
+- ROM hacks: **Pokémon Unbound v2.1.1.1** (and its French translation) and
+  **Pokémon Radical Red v4.1**, told apart by the whole file's SHA-1 once
+  loaded (as the app does; about a second for 32 MB on a New 3DS - an old 3DS
+  may not have room for a 32 MB game at all). They run on FireRed rev 0's
+  engine with the app's CFRU tables: their own names, moves, items and types
+  (Fairy), names in their mixed case, the unencrypted party boxes, POKéDEX
+  (Unbound's Borrius list and National Dex; Radical Red's Kanto and 1,025
+  national numbers), GUIDE (NEXT BOSS with a team per difficulty for
+  Unbound's gyms, HERE, and a WHERE IS built from the area data), BAG's USE /
+  GIVE / PC, FLY (Unbound through its own fly spots) and the battle controls
+  with the switch on CFRU's two-column party menu. Radical Red's MAP is
+  FireRed's when its ROM kept that art; Unbound's own map isn't ported (the
+  app reads it with RomRegionMap), nor its card. Its French translation shows
+  Unbound's English names. Every ROM read is the app's, behind its probes
+  and CRC checks, but only the RAM side has been run here (the hacks'
+  fixtures): point `make preview UB_ROM=... RR_ROM=...` at your own ROMs to
+  render the rest. Other hacks, other languages and Game Boy aren't ported
+  yet; they show "not supported".
 
 ## Controls
 

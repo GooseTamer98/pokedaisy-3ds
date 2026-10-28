@@ -81,6 +81,9 @@ struct pd_config {
     uint32_t battlerControllerFuncs;
     uint32_t inputAction, inputMove, inputTarget, inputItem, inputParty;
     uint32_t actionCursor, moveCursor, partyMenu;
+    // CFRU's party menu is two columns (0 2 4 | 1 3 5: RIGHT 0 -> 1, DOWN 0 ->
+    // 2, CANCEL below), not FireRed's one list.
+    bool partyGrid;
 
     // POKéDEX (the app's PokedexTables): ROM tables ...
     uint32_t dexEntries;       // gPokedexEntries, by national number

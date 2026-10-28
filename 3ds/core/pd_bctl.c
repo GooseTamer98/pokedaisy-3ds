@@ -4,6 +4,8 @@
 
 #define KEY_A 0x001
 #define KEY_B 0x002
+#define KEY_RIGHT 0x010
+#define KEY_LEFT 0x020
 #define KEY_UP 0x040
 #define KEY_DOWN 0x080
 
@@ -171,6 +173,13 @@ static void step_switch(struct pd_bctl* b, const struct pd_game* g, const struct
         if (slot == want) {
             press(b, KEY_A, 8);
             b->stage = 3;
+        } else if (g->cfg->partyGrid) {
+            // CFRU's two columns (0 2 4 | 1 3 5; the app's cursorKey): out of
+            // CANCEL first, then across, then up or down the column.
+            uint16_t key = slot >= 6 ? KEY_UP
+                : slot % 2 != want % 2 ? (want % 2 ? KEY_RIGHT : KEY_LEFT)
+                : want > slot ? KEY_DOWN : KEY_UP;
+            press(b, key, 3);
         } else {
             // The shorter way; a press the menu dropped (its fade) is pressed again.
             press(b, slot > want && slot < 6 ? KEY_UP : KEY_DOWN, 3);
