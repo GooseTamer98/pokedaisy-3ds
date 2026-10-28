@@ -3,6 +3,7 @@
 #ifndef PD_TABLES_H
 #define PD_TABLES_H
 
+#include <stdbool.h>
 #include <stddef.h>
 
 struct pd_move_info {
@@ -50,8 +51,41 @@ struct pd_move_stats {
 };
 extern const struct pd_move_stats pd_move_stats[];
 extern const int pd_move_stats_count;
-// The type chips' colours (AppColors.typeColors), 0xRRGGBB by type id.
+// The type chips' colours (AppColors.typeColors), 0xRRGGBB by type id
+// (the CFRU hacks' Fairy is 23).
 extern const unsigned int pd_type_colors[];
+extern const int pd_type_colors_count;
+
+// One game's names and tables (the app's ActiveTables): FireRed and Emerald
+// share the Gen 3 ones (their own items and places); the hacks have their own
+// ids. NULL growth / move stats = no EXP bar / move advice for that game.
+struct pd_text {
+    const char* const* species;
+    int speciesCount;
+    const struct pd_move_info* moves;
+    int movesCount;
+    const char* const* items;
+    int itemsCount;
+    const unsigned char (*speciesTypes)[2];
+    int speciesTypesCount;
+    const unsigned char* genderRatios;
+    int genderRatiosCount;
+    const char* const* typeNames;
+    int typeNamesCount;
+    const struct pd_type_pair* chart;
+    int chartCount;
+    const char* const* mapsecs;
+    int mapsecsCount;
+    const unsigned char* growthRates;
+    int growthRatesCount;
+    const struct pd_move_stats* moveStats;
+    int moveStatsCount;
+    bool ownCase; // names already in the game's casing (the hacks' mixed case)
+};
+extern const struct pd_text pd_text_firered, pd_text_emerald, pd_text_unbound, pd_text_radical_red;
+// The running game's set, picked by pd_game_detect / pd_game_identify (FireRed's until then).
+extern const struct pd_text* pd_game_text;
+void pd_text_use(const struct pd_text* t);
 
 #define PD_TYPE_NONE 255
 #define PD_SPECIES_EGG 412
@@ -61,6 +95,12 @@ extern const unsigned int pd_type_colors[];
 const char* pd_species_name(int species, char* buf, size_t len);
 const char* pd_move_name(int move, char* buf, size_t len);
 const char* pd_type_name(int type);
+const char* pd_item_text(int item);    // NULL when unnamed
+const char* pd_mapsec_text(int mapsec); // NULL when unnamed
+int pd_type_count(void);               // type ids run 0..this-1 (some unnamed)
+const struct pd_move_stats* pd_move_stats_of(int move); // NULL without move advice
+int pd_growth_rate(int species);       // -1 when unknown
+int pd_gender_ratio(int species);      // -1 when unknown
 int pd_move_type(int move);
 int pd_move_power(int move);
 

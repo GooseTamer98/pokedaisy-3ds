@@ -287,6 +287,7 @@ int main(int argc, char** argv) {
     pd_game_detect(&game, rom, romSize);
     game.rom = rom;
     game.romSize = romSize;
+    pd_game_identify(&game);
     printf("%s rev %d: %s\n", game.code, game.revision, game.title);
     frames(600);
     load_ram(argv[2], "ewram.bin", 0x02000000);

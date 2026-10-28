@@ -139,7 +139,7 @@ static int info_block(struct pd_ui* ui, struct pd_canvas* c, const struct pd_gam
     ui_status_badge(c, ix + iw - 30, ty + 2, m->status);
     ty += 16;
 
-    int rate = m->species > 0 && m->species < pd_growth_rates_count ? pd_growth_rates[m->species] : -1;
+    int rate = pd_growth_rate(m->species);
     if (rate >= 0 && rate < 6 && m->level >= 1 && m->level <= 100) {
         const int* t = pd_exp_tables[rate];
         long start = t[m->level], next = m->level < 100 ? t[m->level + 1] : start;
@@ -250,8 +250,8 @@ static void types_page(struct pd_canvas* c, int ix, int iw, int ty, const struct
     for (int b = 0; b < 3; b++) {
         bool any = false;
         int cx = ix;
-        for (int atk = 0; atk < pd_type_names_count; atk++) {
-            if (!pd_type_names[atk] || !strcmp(pd_type_names[atk], "???")) continue;
+        for (int atk = 0; atk < pd_type_count(); atk++) {
+            if (!*pd_type_name(atk) || !strcmp(pd_type_name(atk), "???")) continue;
             int pct = pd_type_multiplier_pct(atk, t1, t2);
             int bucket = pct == 0 ? 2 : pct > 100 ? 0 : pct < 100 ? 1 : -1;
             if (bucket != b) continue;
@@ -316,7 +316,7 @@ static void learn_page(struct pd_ui* ui, struct pd_canvas* c, const struct pd_ga
         int rowH = 34 + (open ? o->advice.reasonCount * 16 : 0);
         if (open) pd_round_rect(c, ix - 2, y - 1, iw + 4, rowH, 3, PD_LIST_FILL);
         int type = pd_move_type(o->move);
-        pd_fill(c, ix - 2, y + 1, 3, rowH - 4, type < 18 && pd_type_colors[type] ? pd_type_colors[type] : PD_MUTED);
+        pd_fill(c, ix - 2, y + 1, 3, rowH - 4, type < pd_type_colors_count && pd_type_colors[type] ? pd_type_colors[type] : PD_MUTED);
         if (o->tm[0]) snprintf(buf, sizeof(buf), "%s", o->tm);
         else snprintf(buf, sizeof(buf), "Lv %d", o->level);
         int lw = pd_text(c, ix + 6, y, buf, PD_MUTED, PD_MUTED_SHADOW);
@@ -330,7 +330,7 @@ static void learn_page(struct pd_ui* ui, struct pd_canvas* c, const struct pd_ga
         if (a->verdict == PD_REPLACE) snprintf(buf, sizeof(buf), "FORGET %s", pd_move_name(a->forget, name, sizeof(name)));
         else snprintf(buf, sizeof(buf), "%s", a->verdict == PD_LEARN ? "LEARN" : a->verdict == PD_KNOWN ? "LEARNED" : "SKIP");
         verdict_pill(c, ix + 6, y + 17, buf, a->verdict == PD_SKIP ? VERDICT_GREY : LEARN_GREEN);
-        const struct pd_move_stats* st = o->move < pd_move_stats_count ? &pd_move_stats[o->move] : NULL;
+        const struct pd_move_stats* st = pd_move_stats_of(o->move);
         int power = pd_move_power(o->move);
         char pwr[12], acc[12];
         snprintf(pwr, sizeof(pwr), power > 1 ? "%d" : "-", power);
@@ -371,6 +371,10 @@ static void summary(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game*
         pd_text(c, ix + PD_ICON + 2, ty + 20, "It's an egg. It will hatch in time.", PD_MUTED, PD_MUTED_SHADOW);
         return;
     }
+    // The move advice is the original games' (the app's MoveAdvisor): a hack
+    // with no move data of its own has no LEARN page.
+    int pages = pd_game_text->moveStats ? PD_SUMMARY_PAGES : PD_SUMMARY_LEARN;
+    if (ui->summaryPage >= pages) ui->summaryPage = PD_SUMMARY_MOVES;
     if (ui->summaryPage == PD_SUMMARY_MOVES) {
         ty = name_line(c, ix + PD_ICON + 4, iw - PD_ICON - 4, ty, m);
         ty = info_block(ui, c, g, ix, iw, ty, m);
@@ -385,7 +389,7 @@ static void summary(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game*
         else learn_page(ui, c, g, s, m, ix, iw, ty, by - 4);
     }
     static const char* const LABELS[PD_SUMMARY_PAGES] = { "MOVES", "STATS", "TYPES", "LEARN" };
-    for (int p = 0; p < PD_SUMMARY_PAGES; p++) page_button(ui, c, ix - 2 + p * 56, by, 52, LABELS[p], p);
+    for (int p = 0; p < pages; p++) page_button(ui, c, ix - 2 + p * 56, by, 52, LABELS[p], p);
 }
 
 void ui_party_tab(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game* g, const struct pd_snapshot* s) {

@@ -29,14 +29,23 @@ static uint32_t bgr555(uint16_t c) {
 
 static bool decode(const struct pd_game* g, int species, uint32_t* out) {
     const struct pd_config* cfg = g->cfg;
-    if (!cfg || !cfg->monIconTable || species <= 0 || species > PD_SPECIES_EGG) return false;
+    // Retail's ids end at the egg; a hack's at its own species table's end.
+    int last = pd_game_text->speciesCount > PD_SPECIES_EGG ? pd_game_text->speciesCount - 1 : PD_SPECIES_EGG;
+    if (!cfg || !cfg->monIconTable || species <= 0 || species > last) return false;
     uint8_t w[4], idx;
     if (!pd_rom_read(g, cfg->monIconTable + (uint32_t) species * 4, w, 4)) return false;
     const uint8_t* tiles = pd_rom_at(g, u32le(w), 16 * 32);
-    if (!tiles || !pd_rom_read(g, cfg->monIconPaletteIndices + (uint32_t) species, &idx, 1) || idx > 15) return false;
-    if (!pd_rom_read(g, cfg->monIconPaletteTable + (uint32_t) idx * 8, w, 4)) return false;
-    const uint8_t* pal = pd_rom_at(g, u32le(w), 32);
-    if (!pal) return false;
+    const uint8_t* pal;
+    if (cfg->monIconPaletteInline) {
+        // Unbound: two frames of tiles (1024 bytes), then the icon's palette.
+        pal = pd_rom_at(g, u32le(w) + 1024, 32);
+        if (!tiles || !pal) return false;
+    } else {
+        if (!tiles || !pd_rom_read(g, cfg->monIconPaletteIndices + (uint32_t) species, &idx, 1) || idx > 15) return false;
+        if (!pd_rom_read(g, cfg->monIconPaletteTable + (uint32_t) idx * 8, w, 4)) return false;
+        pal = pd_rom_at(g, u32le(w), 32);
+        if (!pal) return false;
+    }
     uint32_t colours[16];
     for (int i = 0; i < 16; i++) colours[i] = bgr555((uint16_t) (pal[i * 2] | pal[i * 2 + 1] << 8));
     // 4x4 tiles of 8x8, row by row; a byte holds two pixels, the left one low.

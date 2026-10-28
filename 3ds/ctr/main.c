@@ -397,6 +397,7 @@ static bool run_game(const char* file) {
     game.romSize = game.rom ? romSize : 0;
     mem.rom = game.rom;
     mem.romSize = game.romSize;
+    pd_game_identify(&game); // a 32 MB hack: its SHA-1
     pd_romart_scan(&game);
     pd_map_art(&game);
 

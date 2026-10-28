@@ -2,6 +2,9 @@
 
 #include <string.h>
 
+#include "pd_sha1.h"
+#include "pd_tables.h"
+
 // NATIVE_FIRERED_REV0 / _REV1 share every RAM address and save offset below,
 // and LeafGreen's maps put each RAM global at FireRed's address for the same
 // revision (NATIVE_LEAFGREEN_REV0/1).
@@ -361,6 +364,85 @@ static const struct pd_config SAPPHIRE = {
     .mapGroups = 0x08308530,
 };
 
+// The CFRU hacks (NATIVE_UNBOUND_WITH_DEX / NATIVE_RADICAL_RED_V4_1): FireRed
+// 1.0 patched with hooks, so its RAM - party, save blocks, gMain, the bag, the
+// battle globals and the controller handlers - is FireRed rev 0's (the app
+// checked it byte for byte against a clean rev 0 build); boxes are plaintext
+// and the tables are the hacks' own, repointed. The battle menus' cursors are
+// FireRed's (checked headless on both: unbound_battle / radical_red_battle).
+#define CFRU_RAM                                \
+    FIRERED_RAM,                                \
+    .plainBoxes = true,                         \
+    .battlerControllerFuncs = 0x03004FE0,       \
+    .inputAction = 0x0802E438,                  \
+    .inputMove = 0x0802EA10,                    \
+    .inputTarget = 0x0802E674,                  \
+    .inputItem = 0x0803073C,                    \
+    .inputParty = 0x08030684,                   \
+    .actionCursor = 0x02023FF8,                 \
+    .moveCursor = 0x02023FFC
+
+// Pokémon Unbound v2.1.1.1 (sha1 b4776b82...) and its French translation
+// (0ce2a880..., the same code and RAM): CFRU repointed gItems; its party icons
+// are UnboundIconSource's table, item icons sItemIconTable's.
+static const struct pd_config UNBOUND = {
+    CFRU_RAM,
+    .items = 0x08876200,
+    .monIconTable = 0x09A217FC,
+    .monIconPaletteInline = true,
+    .itemIcons = 0x0825A554,
+};
+
+// Pokémon Radical Red v4.1 (sha1 964f951a...): CFRU repointed the words retail
+// rev 0 loads gMonIconTable / gMonIconPaletteIndices / sItemIconTable / gItems
+// from; the palette table is still vanilla's.
+static const struct pd_config RADICAL_RED = {
+    CFRU_RAM,
+    .items = 0x093C0000,
+    .monIconTable = 0x097FE6CC,
+    .monIconPaletteIndices = 0x097FE164,
+    .monIconPaletteTable = 0x083D4038,
+    .itemIcons = 0x093C8100,
+};
+
+struct known_hack {
+    const char* sha1;
+    enum pd_hack hack;
+    const char* title;
+    const struct pd_config* cfg;
+    const struct pd_text* text;
+};
+
+// Poller.kt's *_SHA1 constants (keep in sync).
+static const struct known_hack HACKS[] = {
+    { "b4776b82a4c7915d0fadeaa27e013523f99dfd94", PD_HACK_UNBOUND, "Pokémon Unbound", &UNBOUND, &pd_text_unbound },
+    // Its French translation: the companion shows Unbound's English names (the
+    // app's French ones aren't ported); the ROM's own text (items, dex) is French.
+    { "0ce2a880aa097f1dce4e1db8ee513d0e82d15859", PD_HACK_UNBOUND, "Pokémon Unbound (FR)", &UNBOUND, &pd_text_unbound },
+    { "964f951a0fdaf209e4ea1344883ef0d557bb3a80", PD_HACK_RADICAL_RED, "Pokémon Radical Red", &RADICAL_RED, &pd_text_radical_red },
+};
+
+void pd_game_identify_sha1(struct pd_game* g, const char* sha1) {
+    if (strcmp(g->code, "BPRE")) return;
+    for (size_t i = 0; i < sizeof(HACKS) / sizeof(HACKS[0]); i++) {
+        if (strcmp(sha1, HACKS[i].sha1)) continue;
+        g->hack = HACKS[i].hack;
+        g->title = HACKS[i].title;
+        g->cfg = HACKS[i].cfg;
+        g->unsupported = NULL;
+        pd_text_use(HACKS[i].text);
+        return;
+    }
+}
+
+void pd_game_identify(struct pd_game* g) {
+    // Only the hack-sized FireRed ROMs: a retail one is told by its header.
+    if (strcmp(g->code, "BPRE") || g->romSize <= 0x1000000 || !g->rom) return;
+    char sha1[41];
+    pd_sha1_hex(g->rom, g->romSize, 0xC4, 6, sha1);
+    pd_game_identify_sha1(g, sha1);
+}
+
 const uint8_t* pd_rom_at(const struct pd_game* g, uint32_t addr, size_t len) {
     if (!g->rom || addr < 0x08000000) return NULL;
     size_t off = addr - 0x08000000;
@@ -445,6 +527,7 @@ void pd_game_detect(struct pd_game* g, const uint8_t* header, size_t romSize) {
     g->code[4] = 0;
     g->revision = header[0xBC];
 
+    pd_text_use(&pd_text_firered);
     if (!strcmp(g->code, "BPRE") || !strcmp(g->code, "BPGE")) {
         g->kind = PD_GAME_FIRERED;
         g->title = g->code[2] == 'R' ? "Pokémon FireRed" : "Pokémon LeafGreen";
@@ -455,10 +538,12 @@ void pd_game_detect(struct pd_game* g, const uint8_t* header, size_t romSize) {
         g->kind = PD_GAME_EMERALD;
         g->title = "Pokémon Emerald";
         g->cfg = &EMERALD;
+        pd_text_use(&pd_text_emerald);
     } else if (!strcmp(g->code, "AXVE") || !strcmp(g->code, "AXPE")) {
         g->kind = PD_GAME_EMERALD;
         bool ruby = g->code[1] == 'X' && g->code[2] == 'V';
         g->title = ruby ? "Pokémon Ruby" : "Pokémon Sapphire";
+        pd_text_use(&pd_text_emerald);
         if (g->revision == 1 || g->revision == 2) {
             g->cfg = ruby ? &RUBY : &SAPPHIRE;
         } else if (g->revision == 0) {
@@ -483,9 +568,9 @@ void pd_game_detect(struct pd_game* g, const uint8_t* header, size_t romSize) {
         g->unsupported = "This revision isn't supported yet";
     } else if (romSize > 0x1000000) {
         // A >16 MB FireRed / Emerald is a ROM hack: the app tells them apart
-        // by SHA1 (Poller.detect) - not ported yet.
+        // by SHA1 (Poller.detect) - pd_game_identify, once the ROM is in.
         g->cfg = NULL;
         g->title = g->kind == PD_GAME_FIRERED ? "FireRed ROM hack" : "Emerald ROM hack";
-        g->unsupported = "ROM hacks aren't supported on 3DS yet";
+        g->unsupported = "This ROM hack isn't supported on 3DS yet";
     }
 }

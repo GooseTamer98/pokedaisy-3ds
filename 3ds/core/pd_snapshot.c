@@ -102,19 +102,19 @@ static void decode_name(const uint8_t* src, int maxLen, char* out, size_t outLen
 // DisplayPartyPokemonGender's rule that a Nidoran still named "NIDORAN♀" /
 // "NIDORAN♂" shows no mark (its name has one) - the app's withNativeGender.
 static enum pd_gender gender_of(const struct pd_mon* m, uint32_t personality) {
-    if (m->species == PD_SPECIES_EGG || m->species >= pd_gender_ratios_count) return PD_GENDER_NONE;
+    int ratio = pd_gender_ratio(m->species);
+    if (m->species == PD_SPECIES_EGG || ratio < 0) return PD_GENDER_NONE;
     if ((m->species == 29 && !strcmp(m->nickname, "NIDORAN♀")) ||
         (m->species == 32 && !strcmp(m->nickname, "NIDORAN♂"))) {
         return PD_GENDER_NONE;
     }
-    int ratio = pd_gender_ratios[m->species];
     if (ratio == 255) return PD_GENDER_NONE;
     if (ratio == 0) return PD_GENDER_MALE;
     if (ratio == 254) return PD_GENDER_FEMALE;
     return (int) (personality & 0xFF) < ratio ? PD_GENDER_FEMALE : PD_GENDER_MALE;
 }
 
-bool pd_decode_party_mon(const uint8_t* raw, struct pd_mon* m) {
+bool pd_decode_party_mon(const uint8_t* raw, struct pd_mon* m, bool plain) {
     memset(m, 0, sizeof(*m));
     uint32_t personality = u32(raw);
     uint32_t key = personality ^ u32(raw + 4);
@@ -131,14 +131,23 @@ bool pd_decode_party_mon(const uint8_t* raw, struct pd_mon* m) {
         sum = (uint16_t) (sum + (w & 0xFFFF) + (w >> 16));
     }
     // Retail boxes are encrypted and checksummed; an empty slot fails here.
-    if (sum != stored || stored == 0) return false;
-
+    // CFRU's are plaintext (decodePartyMon's fallback): the substructs in
+    // growth / attacks / EVs / misc order, no checksum, a sane species or none.
     int off[4] = {0};
-    for (int slot = 0; slot < 4; slot++) off[SUBSTRUCT_ORDER[personality % 24][slot]] = slot * 12;
+    if (sum != stored || stored == 0) {
+        if (!plain) return false;
+        memcpy(block, raw + 0x20, sizeof(block));
+        uint16_t species = u16(block);
+        if (species == 0 || species > 4000) return false;
+        for (int i = 0; i < 4; i++) off[i] = i * 12;
+    } else {
+        for (int slot = 0; slot < 4; slot++) off[SUBSTRUCT_ORDER[personality % 24][slot]] = slot * 12;
+    }
     m->species = u16(block + off[0]);
     if (m->species == 0) return false;
     m->heldItem = u16(block + off[0] + 2);
-    m->exp = u32(block + off[0] + 4);
+    // (A plaintext box's EXP isn't read, as in the app.)
+    m->exp = sum == stored && stored ? u32(block + off[0] + 4) : 0;
     // EVs: HP, ATTACK, DEFENSE, SPEED, SP. ATK, SP. DEF bytes. Misc: pokerus,
     // met location, origin, then the IV word (5 bits a stat, HP first).
     uint32_t ivWord = u32(block + off[3] + 4);
@@ -230,7 +239,7 @@ void pd_snapshot_read(struct pd_snapshot* s, const struct pd_game* g, pd_read_fn
     uint8_t raw[PD_PARTY_SIZE * MON_SIZE];
     if (count && read(ctx, cfg->playerParty, raw, count * MON_SIZE)) {
         for (int i = 0; i < count; i++) {
-            if (pd_decode_party_mon(raw + i * MON_SIZE, &s->party[s->partyCount])) s->partyCount++;
+            if (pd_decode_party_mon(raw + i * MON_SIZE, &s->party[s->partyCount], cfg->plainBoxes)) s->partyCount++;
         }
     }
 
@@ -414,14 +423,10 @@ bool pd_bag_has(const struct pd_snapshot* s, int item) {
     return false;
 }
 
-static const char* item_entry(const char* const* t, int n, int item) {
-    if (item > 0 && item < n && t[item]) return t[item];
-    return "";
-}
-
 const char* pd_item_name(const struct pd_game* g, int item) {
-    if (g->kind == PD_GAME_EMERALD) return item_entry(pd_item_names_emerald, pd_item_names_emerald_count, item);
-    return item_entry(pd_item_names_firered, pd_item_names_firered_count, item);
+    (void) g; // the running game's names (pd_text)
+    const char* n = pd_item_text(item);
+    return n ? n : "";
 }
 
 // The app's RomItemText: the game's own text, read from gItems in the player's
@@ -461,11 +466,10 @@ const char* pd_pocket_name(int pocket) {
 }
 
 const char* pd_mapsec_name(const struct pd_game* g, int mapsec) {
-    // Emerald's map sections start at 0 (Littleroot); FireRed's Kanto ones at 88.
-    const char* const* t = g->kind == PD_GAME_EMERALD ? pd_mapsec_emerald : pd_mapsec_firered;
-    int n = g->kind == PD_GAME_EMERALD ? pd_mapsec_emerald_count : pd_mapsec_firered_count;
-    if (mapsec >= 0 && mapsec < n && t[mapsec]) return t[mapsec];
-    return "";
+    // Emerald's map sections start at 0 (Littleroot); FireRed's Kanto ones at 88 (pd_text's).
+    (void) g;
+    const char* n = pd_mapsec_text(mapsec);
+    return n ? n : "";
 }
 
 const char* pd_status_label(uint32_t status) {
@@ -484,7 +488,7 @@ static void read_foes(struct pd_snapshot* s, const struct pd_config* cfg, pd_rea
     uint8_t raw[PD_PARTY_SIZE * MON_SIZE];
     if (!read(ctx, cfg->enemyParty, raw, sizeof(raw))) return;
     for (int i = 0; i < PD_PARTY_SIZE; i++) {
-        if (pd_decode_party_mon(raw + i * MON_SIZE, &s->foes[s->foeCount])) s->foeCount++;
+        if (pd_decode_party_mon(raw + i * MON_SIZE, &s->foes[s->foeCount], cfg->plainBoxes)) s->foeCount++;
     }
     if (!s->foeCount || foeBattler < 0 || !cfg->battlerPartyIndexes) return;
     uint8_t idx[2];

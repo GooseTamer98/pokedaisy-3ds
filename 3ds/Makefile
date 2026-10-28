@@ -30,6 +30,12 @@ FR_ROM ?= $(BUILD)/decomps/pokefirered/pokefirered_rev1.gba
 EM_ROM ?= $(BUILD)/decomps/pokeemerald/pokeemerald.gba
 RU_ROM ?= $(BUILD)/decomps/pokeruby/pokeruby_rev1.gba
 SA_ROM ?= $(BUILD)/decomps/pokeruby/pokesapphire_rev1.gba
+# The hacks' ROMs aren't built from anything: point these at your own to
+# preview the tabs that read them (make preview UB_ROM=... RR_ROM=...).
+UB_ROM ?=
+RR_ROM ?=
+UNBOUND_SHA1 := b4776b82a4c7915d0fadeaa27e013523f99dfd94
+RADICAL_RED_SHA1 := 964f951a0fdaf209e4ea1344883ef0d557bb3a80
 rom_if = $(if $(wildcard $(1)),$(1),)
 
 preview: $(BUILD)/pd_preview
@@ -45,6 +51,11 @@ preview: $(BUILD)/pd_preview
 	$(BUILD)/pd_preview $(FIXTURES)/ruby_rev1 AXVE1 $(BUILD)/shots ruby $(call rom_if,$(RU_ROM))
 	$(BUILD)/pd_preview $(FIXTURES)/sapphire_rev1 AXPE1 $(BUILD)/shots sapphire $(call rom_if,$(SA_ROM))
 	$(BUILD)/pd_preview $(FIXTURES)/sapphire_rev1_battle AXPE1 $(BUILD)/shots sapphire-battle $(call rom_if,$(SA_ROM))
+	# The CFRU hacks, known by their SHA-1 (no ROM here: the RAM-read tabs only).
+	$(BUILD)/pd_preview $(FIXTURES)/unbound BPRE@$(UNBOUND_SHA1) $(BUILD)/shots unbound $(call rom_if,$(UB_ROM))
+	$(BUILD)/pd_preview $(FIXTURES)/unbound_battle BPRE@$(UNBOUND_SHA1) $(BUILD)/shots unbound-battle $(call rom_if,$(UB_ROM))
+	$(BUILD)/pd_preview $(FIXTURES)/radical_red BPRE@$(RADICAL_RED_SHA1) $(BUILD)/shots radical-red $(call rom_if,$(RR_ROM))
+	$(BUILD)/pd_preview $(FIXTURES)/radical_red_battle BPRE@$(RADICAL_RED_SHA1) $(BUILD)/shots radical-red-battle $(call rom_if,$(RR_ROM))
 
 decomps:
 	test/build_decomps.sh

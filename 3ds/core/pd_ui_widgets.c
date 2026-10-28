@@ -146,7 +146,7 @@ int ui_type_chip(struct pd_canvas* c, int x, int y, int type, const char* suffix
     if (type < 0 || type == PD_TYPE_NONE) return 0;
     char label[32];
     snprintf(label, sizeof(label), suffix ? "%s %s" : "%s", pd_type_name(type), suffix ? suffix : "");
-    uint32_t fill = type < 18 && pd_type_colors[type] ? pd_type_colors[type] : PD_MUTED;
+    uint32_t fill = type < pd_type_colors_count && pd_type_colors[type] ? pd_type_colors[type] : PD_MUTED;
     int w = pd_text_width(label) + 8;
     pd_round_rect(c, x, y, w, 14, 2, fill);
     pd_text(c, x + 4, y - 2, label, 0xFFFFFF, PD_NO_SHADOW);

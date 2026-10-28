@@ -15,6 +15,14 @@ enum pd_game_kind {
     PD_GAME_EMERALD,  // Emerald, Ruby and Sapphire (R/S run as Emerald, like the app)
 };
 
+// A ROM hack the 3DS companion knows by its SHA-1 (the app's GameKind past
+// the retail ones). It runs on its base game's engine (pd_game.kind).
+enum pd_hack {
+    PD_HACK_NONE = 0,
+    PD_HACK_UNBOUND,     // Pokémon Unbound v2.1.1.1 (English; its French translation too)
+    PD_HACK_RADICAL_RED, // Pokémon Radical Red v4.1
+};
+
 struct pd_config {
     uint32_t playerParty;
     uint32_t playerPartyCount;
@@ -46,6 +54,12 @@ struct pd_config {
     // species), gMonIconPaletteIndices (u8) and gMonIconPaletteTable
     // ({data, tag}, 8 bytes). 0 = none.
     uint32_t monIconTable, monIconPaletteIndices, monIconPaletteTable;
+    // Unbound's gMonIconTable points at 1024 bytes of tiles with their own
+    // 32-byte palette right after (UnboundIconSource), no palette tables.
+    bool monIconPaletteInline;
+    // CFRU's boxes are plaintext: a party slot whose checksum fails is read
+    // unencrypted, in growth / attacks / EVs / misc order (decodePartyMon's fallback).
+    bool plainBoxes;
     // gBagPockets: five {slots pointer, capacity} pairs, 8 bytes apart;
     // bagOrder[i] is the pocket (PD_POCKET_*) the game keeps at index i.
     uint32_t bagPockets;
@@ -129,6 +143,7 @@ struct pd_game {
     char code[5];       // ROM header game code, e.g. "BPRE"
     int revision;       // ROM header 0xBC
     const char* title;  // "Pokémon FireRed"
+    enum pd_hack hack;
     const struct pd_config* cfg; // NULL = detected but not supported
     const char* unsupported;     // why, when cfg is NULL
     // The ROM's bytes (0x08000000 on the bus), for the tabs that read its
@@ -155,5 +170,11 @@ uint32_t pd_in_battle_addr(const struct pd_config* cfg);
 
 // Reads the ROM header (the first 0xC0 bytes of the ROM) and its size.
 void pd_game_detect(struct pd_game* g, const uint8_t* header, size_t romSize);
+// Once g->rom is set: a ROM too big for retail is told apart by its SHA-1
+// (whole file, the cart's GPIO bytes 0xC4-0xC9 read as zeros, as the app's).
+// A second or so over 32 MB on a New 3DS, once per game loaded.
+void pd_game_identify(struct pd_game* g);
+// The same with the hash given (the preview's fixtures have no ROM).
+void pd_game_identify_sha1(struct pd_game* g, const char* sha1);
 
 #endif

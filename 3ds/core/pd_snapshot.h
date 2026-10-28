@@ -147,7 +147,7 @@ void pd_snapshot_read(struct pd_snapshot* s, const struct pd_game* g, pd_read_fn
 void pd_gen3_text(const uint8_t* src, size_t maxLen, char* out, size_t outLen);
 
 // Decodes one struct Pokemon (100 bytes); false for an empty slot.
-bool pd_decode_party_mon(const uint8_t* raw, struct pd_mon* out);
+bool pd_decode_party_mon(const uint8_t* raw, struct pd_mon* out, bool plainBoxes);
 
 // The item's name / bag description in the game's own words ("" if unknown).
 const char* pd_item_name(const struct pd_game* g, int item);

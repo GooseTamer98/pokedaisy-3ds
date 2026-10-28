@@ -44,7 +44,7 @@ static bool is_hm(int move) {
 }
 
 static const struct pd_move_stats* stats_of(int move) {
-    return move > 0 && move < pd_move_stats_count ? &pd_move_stats[move] : NULL;
+    return pd_move_stats_of(move);
 }
 
 static bool is_status(int move) {
@@ -115,8 +115,8 @@ static float attack_score(const struct mon* m, const int* moves, int n) {
     float sum = 0;
     int types = 0;
     bool any = false;
-    for (int def = 0; def < pd_type_names_count; def++) {
-        if (def == TYPE_MYSTERY || !pd_type_names[def]) continue;
+    for (int def = 0; def < pd_type_count(); def++) {
+        if (def == TYPE_MYSTERY || !*pd_type_name(def)) continue;
         types++;
         float best = 0;
         for (int i = 0; i < n; i++) {
@@ -245,8 +245,8 @@ static float score(const struct mon* m, const int* moves, int n, float ref) {
 // The types the moveset hits super effectively, a bit per type id.
 static unsigned super_types(const struct mon* m, const int* moves, int n) {
     unsigned bits = 0;
-    for (int def = 0; def < pd_type_names_count; def++) {
-        if (def == TYPE_MYSTERY || !pd_type_names[def]) continue;
+    for (int def = 0; def < pd_type_count(); def++) {
+        if (def == TYPE_MYSTERY || !*pd_type_name(def)) continue;
         for (int i = 0; i < n; i++) {
             if (attack_value(m, moves[i]) < 0) continue;
             if (pd_type_multiplier_pct(pd_move_type(moves[i]), def, PD_TYPE_NONE) > 100) bits |= 1u << def;

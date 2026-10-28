@@ -72,6 +72,9 @@ static unsigned cachedRom;
 
 const struct pd_map_art* pd_map_art(const struct pd_game* g) {
     if (!g->rom || (g->kind != PD_GAME_FIRERED && g->kind != PD_GAME_EMERALD)) return NULL;
+    // Unbound's Borrius is its own map (the app reads it with RomRegionMap):
+    // FireRed's Kanto with its sections would put every place in the wrong spot.
+    if (g->hack == PD_HACK_UNBOUND) return NULL;
     if (cachedRom == pd_rom_id(g)) return cached && cached->ok ? cached : NULL;
     free(cached);
     cached = calloc(1, sizeof(*cached));

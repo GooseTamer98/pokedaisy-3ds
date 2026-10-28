@@ -204,9 +204,12 @@ int main(int argc, char** argv) {
     uint8_t header[0xC0] = { 0 };
     memcpy(header + 0xAC, code, 4);
     // A digit after the code is the revision (AXPE1); else FireRed's 1, Emerald's 0.
-    header[0xBC] = code[4] >= '0' && code[4] <= '9' ? (uint8_t) (code[4] - '0') : strcmp(code, "BPEE") ? 1 : 0;
+    // "BPRE@<sha1>" is a ROM hack known by its hash (its fixture has no ROM here).
+    const char* hackSha1 = strchr(code, '@') ? strchr(code, '@') + 1 : NULL;
+    header[0xBC] = hackSha1 ? 0 : code[4] >= '0' && code[4] <= '9' ? (uint8_t) (code[4] - '0') : strcmp(code, "BPEE") ? 1 : 0;
     struct pd_game game;
-    pd_game_detect(&game, header, 0x1000000);
+    pd_game_detect(&game, header, hackSha1 ? 0x2000000 : 0x1000000);
+    if (hackSha1) pd_game_identify_sha1(&game, hackSha1);
     // A ROM (pret's byte-identical builds stand in for retail) feeds the tabs
     // that read it: MAP, POKéDEX, GUIDE.
     if (argc == 6) {
@@ -221,6 +224,7 @@ int main(int argc, char** argv) {
         pd_game_detect(&game, rom, n);
         game.rom = rom;
         game.romSize = n;
+        pd_game_identify(&game);
     }
 
     struct pd_snapshot snap;
@@ -250,7 +254,8 @@ int main(int argc, char** argv) {
 
     // A stylus held on the second slot (the cursor's colours), then let go:
     // its summary opens.
-    press(&p, HIT_SLOT + 1, 0);
+    // (The first, with a party of one.)
+    press(&p, has_hit(&p, HIT_SLOT + 1) ? HIT_SLOT + 1 : HIT_SLOT, 0);
     shot(out, name, "pressed", px);
     release(&p);
     shot(out, name, "summary", px);
@@ -258,8 +263,11 @@ int main(int argc, char** argv) {
     shot(out, name, "summary-stats", px);
     tap(&p, HIT_SUMMARY_PAGE + PD_SUMMARY_TYPES, 0);
     shot(out, name, "summary-types", px);
-    tap(&p, HIT_SUMMARY_PAGE + PD_SUMMARY_LEARN, 0);
-    shot(out, name, "summary-learn", px);
+    // (No LEARN page without move advice: the hacks.)
+    if (has_hit(&p, HIT_SUMMARY_PAGE + PD_SUMMARY_LEARN)) {
+        tap(&p, HIT_SUMMARY_PAGE + PD_SUMMARY_LEARN, 0);
+        shot(out, name, "summary-learn", px);
+    }
     if (has_hit(&p, HIT_LEARN_ROW)) {
         tap(&p, HIT_LEARN_ROW, 0);
         shot(out, name, "summary-learn-open", px);
@@ -316,7 +324,9 @@ int main(int argc, char** argv) {
     // arrows step the tabs, and a TM shows who can learn it.
     tap(&p, HIT_TAB + PD_TAB_BAG, 0);
     shot(out, name, "bag", px);
-    tap(&p, HIT_BAG_ROW + 2, 0);
+    // The third item, or the last of a shorter bag.
+    int row = has_hit(&p, HIT_BAG_ROW + 2) ? 2 : has_hit(&p, HIT_BAG_ROW + 1) ? 1 : 0;
+    if (has_hit(&p, HIT_BAG_ROW + row)) tap(&p, HIT_BAG_ROW + row, 0);
     shot(out, name, "bag-item", px);
     drag(&p, HIT_BAG_LIST, -60);
     shot(out, name, "bag-scrolled", px);

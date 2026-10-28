@@ -437,8 +437,8 @@ static void foe_details(struct pd_canvas* c, const struct pd_game* g, const stru
     for (int b = 0; b < 3 && foe->type1 != PD_TYPE_NONE; b++) {
         int cx = -1;
         for (int o = 0; o < 4 && ORDER[b][o] >= 0; o++) {
-            for (int atk = 0; atk < pd_type_names_count; atk++) {
-                if (!pd_type_names[atk] || !strcmp(pd_type_names[atk], "???")) continue;
+            for (int atk = 0; atk < pd_type_count(); atk++) {
+                if (!*pd_type_name(atk) || !strcmp(pd_type_name(atk), "???")) continue;
                 if (pd_type_multiplier_pct(atk, foe->type1, foe->type2) != ORDER[b][o]) continue;
                 const char* mult = ORDER[b][o] == 400 ? "4x" : ORDER[b][o] == 200 ? "2x"
                     : ORDER[b][o] == 50 ? "1/2x" : ORDER[b][o] == 25 ? "1/4x" : "0x";
@@ -627,7 +627,7 @@ static void controls(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game
             move_cell(c, cx, cy, cw, chh, move, you->pp[i], foe, false);
             if (move) {
                 int type = pd_move_type(move);
-                uint32_t frame = type < 18 && pd_type_colors[type] ? pd_type_colors[type] : PD_MUTED;
+                uint32_t frame = type < pd_type_colors_count && pd_type_colors[type] ? pd_type_colors[type] : PD_MUTED;
                 pd_fill(c, cx, cy + 2, 3, chh - 4, frame);
             }
             if (ui->pressedId == HIT_BC_MOVE + i && ok) pd_dim(c, 0x40);
